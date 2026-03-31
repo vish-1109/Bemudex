@@ -8,7 +8,6 @@ A clean, simple desktop app to download YouTube videos, playlists and YouTube Mu
 - Download entire YouTube playlists as MP3
 - Download YouTube Music playlists as MP3
 - Highest quality audio
-- Remembers your last used download folder
 - Clean dark UI
 - Live activity log
 
