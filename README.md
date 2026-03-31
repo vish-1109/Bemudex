@@ -21,7 +21,7 @@ A clean, simple desktop app to download YouTube videos, playlists and YouTube Mu
 **1. Clone the repository**
 ```bash
 git clone https://github.com/vish-1109/Melodex.git
-cd melodex
+cd Melodex
 ```
 
 **2. Install FFmpeg**
