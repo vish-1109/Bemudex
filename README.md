@@ -4,7 +4,6 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.7%2B-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey.svg)
 
 A clean, simple desktop application to download YouTube videos, playlists, and YouTube Music playlists as MP3s in the highest quality available.
 
