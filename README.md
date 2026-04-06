@@ -35,12 +35,6 @@ sudo apt install ffmpeg -y
 # Arch
 sudo pacman -S ffmpeg
 
-# macOS
-brew install ffmpeg
-
-# Windows
-Download from ffmpeg.org and add to PATH
-
 **3. Install Python dependencies**
 pip install -r requirements.txt
 
