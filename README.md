@@ -27,6 +27,16 @@ A clean, simple desktop application to download YouTube videos, playlists, and Y
 ### Option 1: Package Installers (Recommended for Linux)
 Download the latest `.deb` or `.rpm` package from the [Releases](https://github.com/vish-1109/Bemudex/releases) page.
 
+### Ubuntu / Debian / Linux Mint
+1. Download `bemudex_1.2.deb`
+2. Double-click to install
+3. Find Bemudex in your app menu
+
+### Fedora / RHEL
+1. Download `bemudex-1.2-1.noarch.rpm`
+2. Double-click to install
+3. Find Bemudex in your app menu
+
 **Debian / Ubuntu (.deb)**
 ```bash
 sudo apt install ./bemudex_*.deb
