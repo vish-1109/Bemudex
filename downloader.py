@@ -18,7 +18,7 @@ def start_download(url, folder, on_log, on_done, quality='320', stop_event=None)
         try:
             ydl_opts = {
                 'format': 'bestaudio/best',
-                'outtmpl': os.path.join(folder, '%(playlist_index)02d - %(title)s.%(ext)s'),
+                'outtmpl': os.path.join(folder, '%(playlist_index&{:02d} - |)s%(title)s.%(ext)s'),
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
@@ -36,17 +36,8 @@ def start_download(url, folder, on_log, on_done, quality='320', stop_event=None)
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
             
-            # Cleanup NA prefix (single video case)
-            for filename in os.listdir(folder):
-                if filename.startswith('NA') and filename.endswith('.mp3'):
-                    old_path = os.path.join(folder, filename)
-                    new_filename = filename[2:]
-                    # Also remove leading dash if present
-                    if new_filename.startswith('- '):
-                        new_filename = new_filename[2:]
-                    new_path = os.path.join(folder, new_filename)
-                    os.rename(old_path, new_path)
-            
+            # No external cleanup needed due to conditional outtmpl
+
             on_log("✅ All done! Check your folder.")
         except Exception as e:
             if "cancelled" in str(e).lower():

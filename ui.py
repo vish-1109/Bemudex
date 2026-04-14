@@ -16,7 +16,7 @@ def load_last_folder():
         with open(CONFIG_FILE, "r") as f:
             config = json.load(f)
             return config.get("last_folder", "")
-    except:
+    except Exception:
         return ""
 
 def save_last_folder(folder):
@@ -36,8 +36,9 @@ class App:
     def __init__(self, root):
         self.root = root
         self.root.title("Bemudex")
-        self.root.geometry("650x700")
-        self.root.resizable(False, False)
+        self.root.geometry("600x600")
+        self.root.minsize(450, 670)
+        self.root.resizable(True, True)
         
         # Check ffmpeg on startup
         if not check_ffmpeg():
@@ -66,14 +67,14 @@ class App:
     def _build_header(self):
         ctk.CTkLabel(
             self.root, text="Bemudex",
-            font=ctk.CTkFont(family="Ubuntu", size=20, weight="bold")
+            font=FONT_TITLE
         ).pack(pady=(20, 2))
 
         ctk.CTkLabel(
             self.root,
             text="Download YouTube videos or playlists as high-quality MP3.",
-            font=ctk.CTkFont(family="Ubuntu", size=11),
-            text_color="gray50"
+            font=FONT_SUBTITLE,
+            text_color=TEXT_SECONDARY
         ).pack(pady=(0, 10))
 
     def _build_url_input(self):
@@ -83,7 +84,7 @@ class App:
 
         ctk.CTkLabel(
             url_frame, text="Insert URL:",
-            font=ctk.CTkFont(family="Ubuntu", size=14)
+            font=FONT_LABEL
         ).grid(row=0, column=0, sticky="w", padx=10, pady=(10, 5))
 
         self.url_entry = ctk.CTkEntry(
@@ -100,7 +101,7 @@ class App:
 
         ctk.CTkLabel(
             folder_frame, text="Download Folder:",
-            font=ctk.CTkFont(family="Ubuntu", size=14)
+            font=FONT_LABEL
         ).pack(anchor="w", padx=10, pady=(10, 5))
 
         self.folder_var = tk.StringVar(value=load_last_folder())
@@ -127,7 +128,7 @@ class App:
         
         ctk.CTkLabel(
             quality_frame, text="MP3 Quality:",
-            font=ctk.CTkFont(family="Ubuntu", size=14)
+            font=FONT_LABEL
         ).pack(anchor="w", padx=10, pady=(10, 5))
         
         self.quality_var = ctk.StringVar(value="320")
@@ -141,8 +142,8 @@ class App:
         ctk.CTkLabel(
             quality_frame,
             text="Higher quality = larger file size",
-            font=ctk.CTkFont(family="Ubuntu", size=10),
-            text_color="gray50"
+            font=FONT_BUTTON_SM,
+            text_color=TEXT_SECONDARY
         ).pack(anchor="w", padx=10, pady=(0, 10))
 
     def _build_buttons(self):
@@ -153,8 +154,8 @@ class App:
         self.btn_download = ctk.CTkButton(
             button_frame, text="Download",
             command=self._download,
-            fg_color="#e53935", hover_color="#d32f2f",
-            font=ctk.CTkFont(family="Ubuntu", size=14, weight="bold"),
+            fg_color=ACCENT, hover_color=ACCENT_HOVER,
+            font=FONT_BUTTON,
             height=40
         )
         self.btn_download.pack(side="left", fill="x", expand=True, padx=(0, 5))
@@ -164,7 +165,7 @@ class App:
             button_frame, text="Cancel",
             command=self._cancel_download,
             fg_color="#555555", hover_color="#333333",
-            font=ctk.CTkFont(family="Ubuntu", size=14, weight="bold"),
+            font=FONT_BUTTON,
             height=40,
             state="disabled"
         )
@@ -175,7 +176,7 @@ class App:
             self.root, text="Open Download Folder",
             command=self._open_folder,
             fg_color="#2b2b2b", hover_color="#404040",
-            font=ctk.CTkFont(family="Ubuntu", size=12),
+            font=FONT_SUBTITLE,
             height=35
         )
         self.btn_open.pack(pady=(5, 0), padx=20, fill="x")
@@ -186,14 +187,14 @@ class App:
 
         ctk.CTkLabel(
             log_frame, text="Activity:",
-            font=ctk.CTkFont(family="Ubuntu", size=14)
+            font=FONT_LABEL
         ).pack(anchor="w", padx=10, pady=(10, 5))
 
         self.log_box = scrolledtext.ScrolledText(
             log_frame, state=tk.DISABLED,
-            height=50, width=90,
-            bg="#2b2b2b", fg="#00ff90",
-            font=("Ubuntu", 9),
+            height=10, width=90,
+            bg="#2b2b2b", fg=TEXT_LOG,
+            font=FONT_LOG,
             wrap=tk.WORD
         )
         self.log_box.pack(padx=10, pady=(0, 10), fill="both", expand=True)
