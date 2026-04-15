@@ -28,7 +28,7 @@
 
 ## 📦 Download & Install
 
-### Windows (Windows 10 / 11)
+###  Windows (Windows 10 / 11)
 
 | Step | Action |
 |:---:|:---|
