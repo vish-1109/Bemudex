@@ -57,6 +57,7 @@ sudo dnf install ./bemudex-*.rpm
 ```
 (You can also simply double-click the downloaded package to install it via your system's software center, then find Bemudex in your app menu.)
 
+
 **🛠️ Manual Installation (Build from Source)**
 If you prefer to run the application directly via Python, follow these steps:
 
