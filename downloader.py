@@ -4,12 +4,17 @@ import threading
 import yt_dlp
 
 def get_ffmpeg_path():
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-        if sys.platform.startswith('win'):
-            ffmpeg_exe = os.path.join(base_path, 'ffmpeg.exe')
-            return ffmpeg_exe if os.path.exists(ffmpeg_exe) else 'ffmpeg'
-    return 'ffmpeg'
+    # If we are on Windows, use the local/bundled ffmpeg.exe
+    if sys.platform == "win32":
+        if getattr(sys, 'frozen', False):
+            # If running as a compiled .exe
+            return os.path.join(sys._MEIPASS, 'ffmpeg.exe')
+        else:
+            # If running from source code
+            return 'ffmpeg.exe'
+            
+    # If we are on Linux, return None so yt-dlp uses the system default
+    return None
 
 def start_download(url, folder, on_log, on_done, quality='320', stop_event=None):
     def hook(d):
@@ -35,13 +40,12 @@ def start_download(url, folder, on_log, on_done, quality='320', stop_event=None)
                 }],
                 'progress_hooks': [hook],
                 'ignoreerrors': True,
-                'ffmpeg_location': get_ffmpeg_path(),
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['android_vr'],
-                    }
-                },
             }
+            
+            # Only inject the ffmpeg path if we are on Windows
+            ffmpeg_path = get_ffmpeg_path()
+            if ffmpeg_path:
+                ydl_opts['ffmpeg_location'] = ffmpeg_path
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])

@@ -36,7 +36,7 @@ def save_last_folder(folder):
 def check_ffmpeg():
     ffmpeg_path = get_ffmpeg_path()
     try:
-        subprocess.run([ffmpeg_path, "-version"], capture_output=True, check=True)
+        subprocess.run([ffmpeg_path or "ffmpeg", "-version"], capture_output=True, check=True)
         return True
     except (subprocess.SubprocessError, FileNotFoundError):
         return False
