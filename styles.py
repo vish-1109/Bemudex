@@ -7,9 +7,9 @@ TEXT_PRIMARY = "#f0f0f0"
 TEXT_SECONDARY = "#888888"
 TEXT_LOG = "#00e676"
 
-FONT_TITLE = ("Ubuntu", 20, "bold")
-FONT_SUBTITLE = ("Ubuntu", 11)
-FONT_LABEL = ("Ubuntu", 14)
-FONT_BUTTON = ("Ubuntu", 14, "bold")
-FONT_BUTTON_SM = ("Ubuntu", 10)
-FONT_LOG = ("Ubuntu", 9)
+FONT_TITLE = ("default", 20, "bold")
+FONT_SUBTITLE = ("default", 11)
+FONT_LABEL = ("default", 14)
+FONT_BUTTON = ("default", 14, "bold")
+FONT_BUTTON_SM = ("default", 10)
+FONT_LOG = ("default", 9)
