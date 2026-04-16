@@ -50,11 +50,6 @@ Download the latest `.deb` or `.rpm` package from the [Releases](https://github.
 ```bash
 sudo apt install ./bemudex_*.deb
 ```
-
-**Fedora / RHEL / openSUSE (.rpm)**
-```bash
-sudo dnf install ./bemudex-*.rpm
-```
 (You can also simply double-click the downloaded package to install it via your system's software center, then find Bemudex in your app menu.)
 
 
