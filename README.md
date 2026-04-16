@@ -44,7 +44,7 @@
 
 ### 🐧 Linux Package Installers (Recommended)
 
-Download the latest `.deb` or `.rpm` package from the [Releases](https://github.com/vish-1109/Bemudex/releases) page.
+Download the latest `.deb` package from the [Releases](https://github.com/vish-1109/Bemudex/releases) page.
 
 **Debian / Ubuntu / Linux Mint (.deb)**
 ```bash
