@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Bemudex
+Comment=A modern desktop media downloader powered by yt-dlp and FFmpeg
+Exec=bemudex
+Icon=org.bemudex.Bemudex
+Terminal=false
+Type=Application
+Categories=AudioVideo;Network;Utility;
+Keywords=downloader;video;audio;music;playlist;youtube;yt-dlp;ffmpeg;

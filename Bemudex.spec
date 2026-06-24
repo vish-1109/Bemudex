@@ -1,12 +1,23 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
+import os
 
+datas_list = [
+    ('assets', 'assets'),
+    ('core', 'core'),
+    ('services', 'services'),
+    ('frontend/dist', 'frontend/dist')
+]
+
+if sys.platform == 'win32' and os.path.exists('ffmpeg.exe'):
+    datas_list.append(('ffmpeg.exe', '.'))
 
 a = Analysis(
     ['app.py'],
     pathex=[],
     binaries=[],
-    datas=[('assets', 'assets'), ('ffmpeg.exe', '.')],
-    hiddenimports=[],
+    datas=datas_list,
+    hiddenimports=['mutagen'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -32,7 +43,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['assets\\favicon.ico'],
+    icon=['assets/favicon.ico'],
 )
 coll = COLLECT(
     exe,
@@ -43,3 +54,4 @@ coll = COLLECT(
     upx_exclude=[],
     name='Bemudex',
 )
+

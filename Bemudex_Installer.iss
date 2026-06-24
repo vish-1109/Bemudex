@@ -1,6 +1,6 @@
 [Setup]
 AppName=Bemudex
-AppVersion=1.2
+AppVersion=2.0
 AppPublisher="Vishrut"
 DefaultDirName={commonpf}\Bemudex
 DefaultGroupName=Bemudex

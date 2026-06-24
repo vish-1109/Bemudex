@@ -1,2 +1,6 @@
 yt-dlp
-customtkinter
+pywebview
+PyQt6
+PyQt6-WebEngine
+qtpy
+mutagen

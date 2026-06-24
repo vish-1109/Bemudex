@@ -1,0 +1,14 @@
+Package: bemudex
+Version: 2.0.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: ffmpeg, python3, libwebkit2gtk-4.0-37 | libwebkit2gtk-4.1-0
+Maintainer: Vishrut Gundaji <vishrutgundaji@gmail.com>
+Homepage: https://github.com/vish-1109/Bemudex
+Description: A modern desktop media downloader powered by yt-dlp and FFmpeg
+ Bemudex is a modern desktop media downloader powered by yt-dlp and FFmpeg.
+ Built for Linux desktop environments with a modern, lightweight interface.
+ .
+ Features include high-quality video and audio downloads, playlist support,
+ metadata embedding, thumbnail embedding, and a self-updating yt-dlp engine.
