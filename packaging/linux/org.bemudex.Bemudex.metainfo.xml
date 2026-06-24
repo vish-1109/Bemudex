@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.bemudex.Bemudex.desktop</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <name>Bemudex</name>
+  <summary>A modern desktop media downloader powered by yt-dlp and FFmpeg</summary>
+
+  <icon type="stock">org.bemudex.Bemudex</icon>
+
+  <description>
+    <p>
+      Bemudex is a modern desktop media downloader powered by yt-dlp and FFmpeg,
+      built for Linux desktop environments with a modern, lightweight interface.
+      Download videos, playlists, audio tracks and albums with metadata embedding,
+      thumbnail support, queue management and automatic engine updates.
+    </p>
+    <p>Key Features:</p>
+    <ul>
+      <li>High-quality video downloads</li>
+      <li>MP3, FLAC, WAV and M4A audio downloads</li>
+      <li>Playlist downloading support</li>
+      <li>Metadata embedding</li>
+      <li>Thumbnail embedding</li>
+      <li>Chapter embedding</li>
+      <li>Queue management</li>
+      <li>Download retry support</li>
+      <li>Custom thumbnail support</li>
+      <li>Self-updating yt-dlp engine</li>
+      <li>Automatic recovery from failed engine updates</li>
+      <li>Modern desktop interface</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">org.bemudex.Bemudex.desktop</launchable>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main download interface with video quality selection</caption>
+      <image type="source" width="1516" height="807">https://raw.githubusercontent.com/vish-1109/Bemudex/main/docs/screenshots/main_window.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Audio download mode with format and bitrate selection</caption>
+      <image type="source" width="1516" height="807">https://raw.githubusercontent.com/vish-1109/Bemudex/main/docs/screenshots/audio_mode.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Settings page showing dependencies and system health</caption>
+      <image type="source" width="1516" height="807">https://raw.githubusercontent.com/vish-1109/Bemudex/main/docs/screenshots/settings.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://github.com/vish-1109/Bemudex</url>
+  <url type="bugtracker">https://github.com/vish-1109/Bemudex/issues</url>
+  <url type="contact">https://github.com/vish-1109/Bemudex</url>
+
+  <developer id="github.com/vish-1109">
+    <name>Vishrut</name>
+  </developer>
+
+  <content_rating type="oars-1.1" />
+
+  <provides>
+    <binary>bemudex</binary>
+  </provides>
+
+  <categories>
+    <category>AudioVideo</category>
+    <category>Network</category>
+    <category>Utility</category>
+  </categories>
+
+  <keywords>
+    <keyword>downloader</keyword>
+    <keyword>video</keyword>
+    <keyword>audio</keyword>
+    <keyword>music</keyword>
+    <keyword>playlist</keyword>
+    <keyword>youtube</keyword>
+    <keyword>yt-dlp</keyword>
+    <keyword>ffmpeg</keyword>
+  </keywords>
+
+  <releases>
+    <release version="2.0.0" date="2026-06-23" />
+  </releases>
+</component>

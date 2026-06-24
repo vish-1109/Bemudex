@@ -1,0 +1,3 @@
+VERSION = "v2.0.0"
+BUILD = "2026.06.11"
+RELEASE_CHANNEL = "stable"

@@ -1,0 +1,336 @@
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&display=swap');
+
+:root {
+  /* === Modern Black & White Monochrome Theme === */
+
+  /* Backgrounds */
+  --bg-primary:    hsl(0, 0%, 2%);
+  --bg-sidebar:    hsl(0, 0%, 4%);
+  --bg-card:       hsl(0, 0%, 6%);
+  --bg-card-hover: hsl(0, 0%, 9%);
+  --bg-input:      hsl(0, 0%, 5%);
+  --bg-input-focus:hsl(0, 0%, 8%);
+  --bg-panel:      hsl(0, 0%, 3%);
+  --bg-hover:      hsla(0, 0%, 100%, 0.03);
+  --bg-elevated:   hsl(0, 0%, 10%);
+  --bg-glass-sidebar:  rgba(6, 6, 6, 0.65);
+  --bg-glass-card:     rgba(10, 10, 10, 0.45);
+  --bg-glass-panel:    rgba(4, 4, 4, 0.65);
+  --bg-glass-dialog:   rgba(10, 10, 10, 0.85);
+  --backdrop-blur:     blur(20px) saturate(120%);
+
+  /* Text */
+  --text-primary:       hsl(0, 0%, 96%);
+  --text-secondary:     hsl(0, 0%, 63%);
+  --text-muted:         hsl(0, 0%, 40%);
+  --text-accent-active: hsl(0, 0%, 2%);
+
+  /* Accent */
+  --accent:             #ffffff;
+  --accent-hover:       hsl(0, 0%, 88%);
+  --accent-glow:        rgba(255, 255, 255, 0.08);
+  --accent-light:       rgba(255, 255, 255, 0.04);
+  --accent-subtle:      rgba(255, 255, 255, 0.06);
+
+  --accent-purple:      #ffffff;
+  --accent-purple-glow: rgba(255, 255, 255, 0.12);
+  --accent-purple-soft: rgba(255, 255, 255, 0.06);
+
+  /* Borders */
+  --border-color:  rgba(255, 255, 255, 0.06);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-focus:  rgba(255, 255, 255, 0.16);
+  --border-active: rgba(255, 255, 255, 0.28);
+
+  /* Status */
+  --success:      hsl(145, 65%, 42%);
+  --success-glow: hsla(145, 65%, 42%, 0.12);
+  --warning:      hsl(38, 92%, 50%);
+  --warning-glow: hsla(38, 92%, 50%, 0.10);
+  --error:        hsl(0, 72%, 55%);
+  --error-glow:   hsla(0, 72%, 55%, 0.10);
+  --info:         hsl(210, 80%, 55%);
+
+  /* Progress */
+  --progress-bg:   rgba(255, 255, 255, 0.06);
+  --progress-fill: var(--accent-purple);
+
+  /* Skeleton */
+  --skeleton-base:  hsl(0, 0%, 7%);
+  --skeleton-shine: hsl(0, 0%, 12%);
+
+  /* Typography */
+  --font-sans: 'Ubuntu', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Ubuntu Mono', 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+  /* Radii */
+  --radius-xs:   6px;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   20px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm:   0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md:   0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg:   0 8px 32px rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 0 20px rgba(255, 255, 255, 0.03);
+
+  /* Transitions */
+  --ease-out:        cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-fast:   all 0.15s ease;
+  --transition-smooth: all 0.25s var(--ease-out);
+  --transition-slow:   all 0.4s var(--ease-out);
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--border-active);
+
+  /* Layout */
+  --sidebar-width: 220px;
+  --panel-width:   340px;
+}
+
+/* ── Light Theme ── */
+.theme-light {
+  --bg-primary:    hsl(0, 0%, 97%);
+  --bg-sidebar:    hsl(0, 0%, 94%);
+  --bg-card:       hsl(0, 0%, 100%);
+  --bg-card-hover: hsl(0, 0%, 96%);
+  --bg-input:      hsl(0, 0%, 92%);
+  --bg-input-focus:hsl(0, 0%, 88%);
+  --bg-panel:      hsl(0, 0%, 95%);
+  --bg-hover:      rgba(0, 0, 0, 0.03);
+  --bg-elevated:   hsl(0, 0%, 100%);
+  --bg-glass-sidebar:  rgba(240, 240, 240, 0.65);
+  --bg-glass-card:     rgba(255, 255, 255, 0.45);
+  --bg-glass-panel:    rgba(242, 242, 242, 0.65);
+  --bg-glass-dialog:   rgba(255, 255, 255, 0.85);
+  --backdrop-blur:     blur(20px) saturate(120%);
+
+  --text-primary:       hsl(0, 0%, 10%);
+  --text-secondary:     hsl(0, 0%, 38%);
+  --text-muted:         hsl(0, 0%, 56%);
+  --text-accent-active: #ffffff;
+
+  --accent:             hsl(0, 0%, 10%);
+  --accent-hover:       hsl(0, 0%, 20%);
+  --accent-glow:        rgba(0, 0, 0, 0.08);
+  --accent-light:       rgba(0, 0, 0, 0.04);
+  --accent-subtle:      rgba(0, 0, 0, 0.06);
+
+  --accent-purple:      hsl(0, 0%, 10%);
+  --accent-purple-glow: rgba(0, 0, 0, 0.08);
+  --accent-purple-soft: rgba(0, 0, 0, 0.04);
+
+  --border-color:  rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-focus:  rgba(0, 0, 0, 0.18);
+  --border-active: rgba(0, 0, 0, 0.28);
+
+  --skeleton-base:  hsl(0, 0%, 90%);
+  --skeleton-shine: hsl(0, 0%, 96%);
+
+  --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--border-active);
+
+  --shadow-sm:   0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md:   0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-lg:   0 8px 32px rgba(0, 0, 0, 0.16);
+}
+
+.theme-light ::-webkit-scrollbar-thumb        { background: rgba(0, 0, 0, 0.22); }
+.theme-light ::-webkit-scrollbar-thumb:hover  { background: rgba(0, 0, 0, 0.40); }
+.theme-light {
+  scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+}
+
+/* ── Global Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+  width: 100%;
+  /* Prevent OS-level font scaling from breaking desktop layouts */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  /* High DPI sub-pixel text rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+input, button, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  /* Crisp logos / icons on HiDPI */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* ── Scrollbar ── */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.45); }
+
+/* ── Focus visible (keyboard navigation) ── */
+:focus { outline: none; }
+:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-xs); }
+
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -400% 0; }
+  100% { background-position:  400% 0; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+@keyframes progressPulse {
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounceIn {
+  0%   { opacity: 0; transform: scale(0.85); }
+  60%  { transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ripple {
+  from { transform: scale(0); opacity: 0.4; }
+  to   { transform: scale(2.5); opacity: 0; }
+}
+
+/* ── Utility animation classes ── */
+.animate-fade-in        { animation: fadeIn 0.35s var(--ease-out) both; }
+.animate-fade-in-scale  { animation: fadeInScale 0.3s var(--ease-out) both; }
+.animate-slide-in       { animation: slideInRight 0.3s var(--ease-out) both; }
+.animate-bounce-in      { animation: bounceIn 0.4s var(--ease-spring) both; }
+.spinner                { animation: spin 0.8s linear infinite; }
+.pulse                  { animation: pulse 2s ease-in-out infinite; }
+
+/* ── Skeleton Loading ── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-base)  25%,
+    var(--skeleton-shine) 50%,
+    var(--skeleton-base)  75%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-text    { height: 14px; border-radius: 4px; }
+.skeleton-text-lg { height: 20px; border-radius: 4px; }
+.skeleton-thumbnail {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  display: block;  /* ensures aspect-ratio works in flex */
+}
+
+/* ── Text selection ── */
+::selection {
+  background: var(--accent-purple-glow);
+  color: var(--text-primary);
+}
+
+/* ── Mesh Background Blobs ── */
+body::before, body::after {
+  content: '';
+  position: absolute;
+  width: 350px;
+  height: 350px;
+  border-radius: var(--radius-full);
+  filter: blur(140px);
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.04;
+  transition: opacity 0.5s ease;
+  will-change: opacity;
+}
+
+body::before {
+  top: -50px;
+  left: 10%;
+  background: radial-gradient(circle, var(--accent) 0%, transparent 80%);
+}
+
+body::after {
+  bottom: -50px;
+  right: 10%;
+  background: radial-gradient(circle, var(--accent) 0%, transparent 80%);
+}
+
+.theme-light body::before, .theme-light body::after {
+  opacity: 0.05;
+}
