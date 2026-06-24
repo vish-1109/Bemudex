@@ -3,10 +3,11 @@
 # 🎧 Bemudex
 
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
-![Python Version](https://img.shields.io/badge/python-3.7%2B-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)
+![License](https://img.shields.io/badge/license-GPL--3.0-green.svg)
+![Version](https://img.shields.io/badge/version-v2.0.0-orange.svg)
 
-**A clean, simple desktop application to download YouTube videos, playlists, and YouTube Music playlists as MP3s in the highest quality available.**
+**A modern desktop media downloader powered by yt-dlp and FFmpeg, featuring audio/video conversions, metadata tagging, and a self-updating engine.**
 
 [⬇️ Download Latest Release](https://github.com/vish-1109/Bemudex/releases)
 
@@ -18,93 +19,87 @@
 
 | Feature | Description |
 |:---|:---|
-| **Versatile Downloads** | Download single videos, entire YouTube playlists, or YouTube Music playlists. |
-| **Smart Ordering** | Playlist downloads are automatically numbered in order (01, 02, 03...). |
-| **Customizable Quality** | Select your preferred MP3 bitrate (128, 192, or 320 kbps). |
-| **Modern UI** | Clean, dark user interface with a live activity log to track progress. |
-| **User Control** | Cancel downloads in progress and open your download folder with a single click. |
+| **🎬 Multi-Format Support** | Download high-quality videos as **MP4** or convert audio to **MP3, M4A, FLAC, or WAV**. |
+| **⚡ Parallel Download Queue** | Download playlist items concurrently using a multi-threaded queue (up to 2 active downloads). |
+| **🔄 Self-Updating Engine** | Built-in updater automatically pulls the latest `yt-dlp` from PyPI with verification and rollback to prevent app breakage when streaming sites update. |
+| **🏷️ Automatic Tagging** | Embeds title, artist metadata, chapter markers, and high-quality cover art/thumbnails directly into your media files. |
+| **📋 Smart Clipboard Monitor** | Auto-detects media links on your clipboard and prompts you to download with a single click. |
+| **🎨 Glassmorphic Interface** | Modern, responsive dark-themed translucent desktop user interface. |
+| **💾 Disk Diagnostics** | Real-time disk space checks of download directories before starting a job. |
 
 ---
 
 ## 📦 Download & Install
 
+### 🐧 Linux (Recommended Installers)
+
+#### Debian / Ubuntu / Linux Mint / Pop!_OS (`.deb`)
+Download `bemudex_2.0.0_amd64.deb` from the [Releases](https://github.com/vish-1109/Bemudex/releases) page and install it:
+```bash
+sudo dpkg -i bemudex_2.0.0_amd64.deb
+sudo apt-get install -f  # Installs any missing dependencies
+```
+*(Or double-click the `.deb` file to install it directly using your system software center.)*
+
+#### Universal Linux (`.AppImage`)
+Download `Bemudex-x86_64.AppImage` from the [Releases](https://github.com/vish-1109/Bemudex/releases) page and run:
+```bash
+chmod +x Bemudex-x86_64.AppImage
+./Bemudex-x86_64.AppImage
+```
+
+---
+
 ### 💻 Windows (10 / 11)
 
 | Step | Action |
 |:---:|:---|
-| **1** | Download `Bemudex-Setup.exe` from the [Releases](https://github.com/vish-1109/Bemudex/releases) page. |
+| **1** | Download `Bemudex_Setup.exe` from the [Releases](https://github.com/vish-1109/Bemudex/releases) page. |
 | **2** | Double-click the installer. |
-| **3** | Follow the setup wizard. |
-| **4** | Launch from the Start Menu or Desktop shortcut. |
-
-> ✅ **No Python or FFmpeg required** – everything is bundled.  
-> *The installer automatically installs the Visual C++ Runtime if missing.*
+| **3** | Follow the setup wizard to install and add desktop shortcuts. |
 
 ---
 
-### 🐧 Linux Package Installers (Recommended)
+## 🛠️ Manual Installation (Build from Source)
 
-Download the latest `.deb` package from the [Releases](https://github.com/vish-1109/Bemudex/releases) page.
+If you prefer to run the application directly via Python:
 
-**Debian / Ubuntu / Linux Mint (.deb)**
-```bash
-sudo apt install ./bemudex_*.deb
-```
-(You can also simply double-click the downloaded package to install it via your system's software center, then find Bemudex in your app menu.)
+### Requirements
+*   **Python 3.8+**
+*   **Node.js & npm** (for compiling the frontend)
+*   **FFmpeg** (Required for media conversions and tagging)
 
-
-**🛠️ Manual Installation (Build from Source)**
-If you prefer to run the application directly via Python, follow these steps:
-
-Requirements:
-Python 3.7+
-FFmpeg (Required for MP3 conversion)
+### Build Instructions
 
 **1. Clone the repository**
 ```bash
-git clone [https://github.com/vish-1109/Bemudex.git](https://github.com/vish-1109/Bemudex.git)
+git clone https://github.com/vish-1109/Bemudex.git
 cd Bemudex
 ```
 
 **2. Install FFmpeg**
-*Debian / Ubuntu*
+*   **Debian/Ubuntu:** `sudo apt install ffmpeg`
+*   **Fedora:** `sudo dnf install ffmpeg`
+*   **Arch Linux:** `sudo pacman -S ffmpeg`
+
+**3. Build the frontend**
 ```bash
-sudo apt install ffmpeg -y
+cd frontend
+npm install
+npm run build
+cd ..
 ```
 
-*Fedora*
+**4. Setup Python environment & run**
 ```bash
-sudo dnf install ffmpeg -y
-```
-
-*Arch Linux*
-```bash
-sudo pacman -S ffmpeg
-```
-
-**3. Install Python dependencies**
-```bash
+python -m venv venv
+source venv/bin/activate  # venv\Scripts\activate on Windows
 pip install -r requirements.txt
-```
-
-**4. Run the app**
-```bash
 python app.py
 ```
 
-## 💻 Usage
-
-1. **Paste** a YouTube video, playlist, or YouTube Music playlist URL into the URL field.
-2. **Select** your destination download folder.
-3. **Choose** your preferred MP3 quality (128 / 192 / 320 kbps).
-4. **Click Download** and watch the live activity log!
-
-## 📌 Notes
-
-- **Metadata:** Downloaded files are saved using the original video titles.
-- **FFmpeg:** If you are building from source and FFmpeg is not installed (or not added to your system's PATH), the MP3
-  conversion step will fail. The Windows installer handles this automatically.
+---
 
 ## 📄 License
 
-This project is licensed under the **MIT License** — free to use, modify, and distribute. See the `LICENSE` file for more details.
+This project is licensed under the **GNU General Public License v3 (GPL-3.0)** — see the [LICENSE](LICENSE) file for details.
