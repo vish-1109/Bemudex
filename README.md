@@ -38,13 +38,13 @@
 
 | Feature | Description |
 |:---|:---|
-| **🎬 Multi-Format Support** | Download high-quality videos as **MP4** or convert audio to **MP3, M4A, FLAC, or WAV**. |
-| **⚡ Parallel Download Queue** | Download playlist items concurrently using a multi-threaded queue (up to 2 active downloads). |
-| **🔄 Self-Updating Engine** | Built-in updater automatically pulls the latest `yt-dlp` from PyPI with verification and rollback to prevent app breakage when streaming sites update. |
-| **🏷️ Automatic Tagging** | Embeds title, artist metadata, chapter markers, and high-quality cover art/thumbnails directly into your media files. |
-| **📋 Smart Clipboard Monitor** | Auto-detects media links on your clipboard and prompts you to download with a single click. |
-| **🎨 Glassmorphic Interface** | Modern, responsive dark-themed translucent desktop user interface. |
-| **💾 Disk Diagnostics** | Real-time disk space checks of download directories before starting a job. |
+| ** Multi-Format Support** | Download high-quality videos as **MP4** or convert audio to **MP3, M4A, FLAC, or WAV**. |
+| ** Parallel Download Queue** | Download playlist items concurrently using a multi-threaded queue (up to 2 active downloads). |
+| ** Self-Updating Engine** | Built-in updater automatically pulls the latest `yt-dlp` from PyPI with verification and rollback to prevent app breakage when streaming sites update. |
+| ** Automatic Tagging** | Embeds title, artist metadata, chapter markers, and high-quality cover art/thumbnails directly into your media files. |
+| ** Smart Clipboard Monitor** | Auto-detects media links on your clipboard and prompts you to download with a single click. |
+| ** Glassmorphic Interface** | Modern, responsive dark-themed translucent desktop user interface. |
+| ** Disk Diagnostics** | Real-time disk space checks of download directories before starting a job. |
 
 ---
 
