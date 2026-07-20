@@ -81,6 +81,11 @@
   </keywords>
 
   <releases>
+    <release version="2.0.2" date="2026-07-20">
+      <description>
+        <p>Fixed AppImage compatibility on Arch-based distributions (resolving library loading conflicts for system FFmpeg and SSL certificate lookup issues for update server reachability).</p>
+      </description>
+    </release>
     <release version="2.0.1" date="2026-07-20">
       <description>
         <p>Fixed an issue with the yt-dlp engine self-updater where verification spawned a cloned window and failed due to frozen environment constraints.</p>

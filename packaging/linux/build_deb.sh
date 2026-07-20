@@ -70,6 +70,6 @@ chmod 755 build/debian/DEBIAN/postrm
 
 echo "🔨 Building Debian package..."
 mkdir -p dist
-dpkg-deb --root-owner-group --build build/debian dist/bemudex_2.0.1_amd64.deb
+dpkg-deb --root-owner-group --build build/debian dist/bemudex_2.0.2_amd64.deb
 
-echo "🎉 Debian package built at dist/bemudex_2.0.1_amd64.deb"
+echo "🎉 Debian package built at dist/bemudex_2.0.2_amd64.deb"

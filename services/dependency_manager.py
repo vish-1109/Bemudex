@@ -7,6 +7,11 @@ import shutil
 import urllib.request
 import urllib.error
 import re
+import ssl
+import certifi
+
+# Create a secure SSL context using certifi's CA bundle for secure, cross-platform updates
+ssl_context = ssl.create_default_context(cafile=certifi.where())
 
 
 from core.logger import logger
@@ -116,7 +121,7 @@ class DependencyManager:
                 YT_DLP_PYPI_URL,
                 headers={"User-Agent": f"Bemudex/{VERSION}"}
             )
-            with urllib.request.urlopen(req, timeout=3) as response:
+            with urllib.request.urlopen(req, timeout=3, context=ssl_context) as response:
                 data = json.loads(response.read().decode())
                 latest_version = data["info"]["version"]
 
@@ -160,7 +165,7 @@ class DependencyManager:
                 YT_DLP_PYPI_URL,
                 headers={"User-Agent": f"Bemudex/{VERSION}"}
             )
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=10, context=ssl_context) as response:
                 data = json.loads(response.read().decode())
                 latest_version = data["info"]["version"]
                 for item in data.get("urls", []):
@@ -205,7 +210,7 @@ class DependencyManager:
                 wheel_url,
                 headers={"User-Agent": f"Bemudex/{VERSION}"}
             )
-            with urllib.request.urlopen(req_wheel, timeout=30) as res:
+            with urllib.request.urlopen(req_wheel, timeout=30, context=ssl_context) as res:
                 wheel_data = res.read()
         except Exception as e:
             logger.error(f"Failed to download wheel: {e}")
@@ -369,7 +374,7 @@ class DependencyManager:
                 YT_DLP_PYPI_URL,
                 headers={"User-Agent": f"Bemudex/{VERSION}"}
             )
-            with urllib.request.urlopen(req, timeout=2) as response:
+            with urllib.request.urlopen(req, timeout=2, context=ssl_context) as response:
                 pass
         except Exception as e:
             internet_status = f"Disconnected / Unreachable ({str(e)})"

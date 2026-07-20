@@ -209,7 +209,7 @@ function App() {
 
   // Settings
   const [dependencies, setDependencies] = useState({
-    bemudex: { version: 'v2.0.1', build: '2026.07.20', release_channel: 'stable' },
+    bemudex: { version: 'v2.0.2', build: '2026.07.20', release_channel: 'stable' },
     ytdlp: { version: '...', latestVersion: '', status: 'unknown', updateAvailable: false, checking: false, updating: false },
     ffmpeg: { installed: false, version: '', path: '', checking: false },
     folderWritable: false,
