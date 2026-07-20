@@ -1,6 +1,17 @@
 import os
 import shutil
 import sys
+
+# Restore original library environment variables for child processes (like system FFmpeg)
+# to prevent loader conflicts caused by PyInstaller or AppImage LD_LIBRARY_PATH overrides.
+if getattr(sys, 'frozen', False):
+    for var in ['LD_LIBRARY_PATH', 'DYLD_LIBRARY_PATH']:
+        orig_var = var + '_ORIG'
+        if orig_var in os.environ:
+            os.environ[var] = os.environ[orig_var]
+        else:
+            os.environ.pop(var, None)
+
 import json
 import subprocess
 import threading
