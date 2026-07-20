@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+    # Clean up the internal resource directory left by PyInstaller / PyQt6
+    if [ -d "/usr/bin/_internal" ]; then
+        rm -rf "/usr/bin/_internal"
+    fi
+fi
+
+exit 0

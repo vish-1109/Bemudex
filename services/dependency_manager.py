@@ -242,24 +242,34 @@ class DependencyManager:
                 "message": f"Extraction of update package failed: {str(e)}"
             }
 
-        logger.info("Verifying staged yt-dlp engine in a subprocess...")
+        logger.info("Verifying staged yt-dlp engine in-process...")
         try:
-            res = subprocess.run(
-                [
-                    sys.executable,
-                    "-c",
-                    "import sys; sys.path.insert(0, sys.argv[1]); import yt_dlp; print(yt_dlp.version.__version__)",
-                    YT_DLP_ENGINE_STAGE_DIR
-                ],
-                capture_output=True,
-                text=True,
-                timeout=15
-            )
-            if res.returncode == 0:
-                verified_version = res.stdout.strip()
-                logger.info(f"Subprocess verification passed: imported yt-dlp version {verified_version} successfully.")
-            else:
-                raise Exception(f"Verification process failed with code {res.returncode}. Error: {res.stderr or res.stdout}")
+            # Save currently loaded modules associated with yt_dlp
+            saved_modules = {k: v for k, v in list(sys.modules.items()) if k == 'yt_dlp' or k.startswith('yt_dlp.')}
+            
+            # Temporarily remove them from sys.modules
+            for k in saved_modules:
+                sys.modules.pop(k, None)
+                
+            # Add the staging parent directory to sys.path at position 0
+            sys.path.insert(0, YT_DLP_ENGINE_STAGE_DIR)
+            
+            try:
+                import yt_dlp
+                verified_version = yt_dlp.version.__version__
+                logger.info(f"In-process verification passed: imported yt-dlp version {verified_version} successfully.")
+            finally:
+                # Clean up sys.path
+                if YT_DLP_ENGINE_STAGE_DIR in sys.path:
+                    sys.path.remove(YT_DLP_ENGINE_STAGE_DIR)
+                
+                # Clean up any newly loaded staging modules from sys.modules
+                for k in list(sys.modules.keys()):
+                    if k == 'yt_dlp' or k.startswith('yt_dlp.'):
+                        sys.modules.pop(k, None)
+                
+                # Restore the original cached modules
+                sys.modules.update(saved_modules)
         except Exception as e:
             logger.error(f"Staged yt-dlp validation failed: {e}")
             if os.path.exists(YT_DLP_ENGINE_STAGE_DIR):

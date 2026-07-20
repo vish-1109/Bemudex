@@ -5,7 +5,7 @@
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
 ![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)
 ![License](https://img.shields.io/badge/license-GPL--3.0-green.svg)
-![Version](https://img.shields.io/badge/version-v2.0.0-orange.svg)
+![Version](https://img.shields.io/badge/version-v2.0.1-orange.svg)
 
 **A modern desktop media downloader powered by yt-dlp and FFmpeg, featuring audio/video conversions, metadata tagging, and a self-updating engine.**
 
@@ -34,9 +34,9 @@
 ### 🐧 Linux (Recommended Installers)
 
 #### Debian / Ubuntu / Linux Mint / Pop!_OS (`.deb`)
-Download `bemudex_2.0.0_amd64.deb` from the [Releases](https://github.com/vish-1109/Bemudex/releases) page and install it:
+Download `bemudex_2.0.1_amd64.deb` from the [Releases](https://github.com/vish-1109/Bemudex/releases) page and install it:
 ```bash
-sudo dpkg -i bemudex_2.0.0_amd64.deb
+sudo dpkg -i bemudex_2.0.1_amd64.deb
 sudo apt-get install -f  # Installs any missing dependencies
 ```
 *(Or double-click the `.deb` file to install it directly using your system software center.)*

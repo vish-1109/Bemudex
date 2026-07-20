@@ -81,6 +81,11 @@
   </keywords>
 
   <releases>
+    <release version="2.0.1" date="2026-07-20">
+      <description>
+        <p>Fixed an issue with the yt-dlp engine self-updater where verification spawned a cloned window and failed due to frozen environment constraints.</p>
+      </description>
+    </release>
     <release version="2.0.0" date="2026-06-23" />
   </releases>
 </component>
