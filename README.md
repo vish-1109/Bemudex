@@ -15,6 +15,25 @@
 
 ---
 
+## 📸 Screenshots
+
+<div align="center">
+  <img src="docs/screenshots/main_window.png" alt="Main Interface" width="800">
+  <p><em>Main download interface with video quality selection</em></p>
+  
+  <br>
+  
+  <img src="docs/screenshots/audio_mode.png" alt="Audio Mode" width="800">
+  <p><em>Audio download mode with format and bitrate selection</em></p>
+
+  <br>
+  
+  <img src="docs/screenshots/settings.png" alt="Settings & System Health" width="800">
+  <p><em>Settings page showing dependencies status and system diagnostics</em></p>
+</div>
+
+---
+
 ## ✨ Features
 
 | Feature | Description |
