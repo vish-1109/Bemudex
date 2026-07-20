@@ -4,3 +4,4 @@ PyQt6
 PyQt6-WebEngine
 qtpy
 mutagen
+certifi
