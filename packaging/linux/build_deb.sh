@@ -27,8 +27,10 @@ mkdir -p build/debian/usr/share/icons/hicolor/256x256/apps
 mkdir -p build/debian/usr/share/metainfo
 mkdir -p build/debian/usr/share/doc/bemudex
 
-# Copy control template
+# Copy control template and postrm script
 cp packaging/linux/control build/debian/DEBIAN/control
+cp packaging/linux/postrm build/debian/DEBIAN/postrm
+chmod 755 build/debian/DEBIAN/postrm
 
 # Copy the entire collection built by PyInstaller
 cp -r dist/Bemudex/* build/debian/usr/bin/
@@ -62,11 +64,12 @@ echo "🔒 Setting standard permissions..."
 find build/debian -type d -exec chmod 755 {} +
 # Ensure desktop files, icons, metadata, and doc files have 644
 find build/debian/usr/share -type f -exec chmod 644 {} +
-# Ensure DEBIAN control files have 644
+# Ensure DEBIAN control files have 644, postrm has 755
 chmod 644 build/debian/DEBIAN/control
+chmod 755 build/debian/DEBIAN/postrm
 
 echo "🔨 Building Debian package..."
 mkdir -p dist
-dpkg-deb --root-owner-group --build build/debian dist/bemudex_2.0.0_amd64.deb
+dpkg-deb --root-owner-group --build build/debian dist/bemudex_2.0.1_amd64.deb
 
-echo "🎉 Debian package built at dist/bemudex_2.0.0_amd64.deb"
+echo "🎉 Debian package built at dist/bemudex_2.0.1_amd64.deb"
