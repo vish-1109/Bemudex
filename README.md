@@ -50,16 +50,6 @@ chmod +x Bemudex-x86_64.AppImage
 
 ---
 
-### 💻 Windows (10 / 11)
-
-| Step | Action |
-|:---:|:---|
-| **1** | Download `Bemudex_Setup.exe` from the [Releases](https://github.com/vish-1109/Bemudex/releases) page. |
-| **2** | Double-click the installer. |
-| **3** | Follow the setup wizard to install and add desktop shortcuts. |
-
----
-
 ## 🛠️ Manual Installation (Build from Source)
 
 If you prefer to run the application directly via Python:
