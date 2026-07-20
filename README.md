@@ -66,6 +66,10 @@ Download `Bemudex-x86_64.AppImage` from the [Releases](https://github.com/vish-1
 chmod +x Bemudex-x86_64.AppImage
 ./Bemudex-x86_64.AppImage
 ```
+**Install FFmpeg**
+*   **Debian/Ubuntu:** `sudo apt install ffmpeg`
+*   **Fedora:** `sudo dnf install ffmpeg`
+*   **Arch Linux:** `sudo pacman -S ffmpeg`
 
 ---
 
