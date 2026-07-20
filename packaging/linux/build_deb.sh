@@ -9,6 +9,25 @@ cd frontend
 npm run build
 cd ..
 
+echo "🔍 Validating venv dependencies against requirements.txt..."
+PYTHON_BIN="./venv/bin/python" && [ -d "venv" ] || PYTHON_BIN="python3"
+MISSING=0
+while IFS= read -r pkg || [ -n "$pkg" ]; do
+    [[ -z "$pkg" || "$pkg" == \#* ]] && continue
+    pkg_name=$(echo "$pkg" | sed 's/[>=<!].*//' | tr '[:upper:]' '[:lower:]' | tr '-' '_')
+    if ! $PYTHON_BIN -c "import importlib; importlib.import_module('$pkg_name')" 2>/dev/null; then
+        echo "❌ Missing dependency: $pkg  (import name: $pkg_name)"
+        MISSING=1
+    fi
+done < requirements.txt
+if [ "$MISSING" -eq 1 ]; then
+    echo ""
+    echo "🚨 Build aborted: one or more packages in requirements.txt are not installed in the venv."
+    echo "   Run: ./venv/bin/pip install -r requirements.txt"
+    exit 1
+fi
+echo "✅ All dependencies verified."
+
 echo "🐍 Compiling PyInstaller backend..."
 # Use venv python if available
 if [ -d "venv" ]; then
