@@ -65,9 +65,12 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
             # Format ETA
             eta_sec = d.get('eta')
             if eta_sec is not None:
-                mins, secs = divmod(eta_sec, 60)
-                hours, mins = divmod(mins, 60)
-                eta_str = f"{hours}:{mins:02d}:{secs:02d}" if hours > 0 else f"{mins}:{secs:02d}"
+                try:
+                    mins, secs = divmod(int(eta_sec), 60)
+                    hours, mins = divmod(mins, 60)
+                    eta_str = f"{hours}:{mins:02d}:{secs:02d}" if hours > 0 else f"{mins}:{secs:02d}"
+                except Exception:
+                    eta_str = "0:00"
             else:
                 eta_str = "0:00"
 
@@ -248,7 +251,7 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                         })
 
                 worker_opts = {
-                    'outtmpl': os.path.join(folder, f"{idx:02d} - %(title)s.%(ext)s"),
+                    'outtmpl': os.path.join(folder, f"{idx:02d} - %(title).180B.%(ext)s"),
                     'progress_hooks': [hook],
                     'postprocessor_hooks': [post_hook],
                     'allow_playlist_files': False,
@@ -409,11 +412,11 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
 
                 if playlist_index is not None:
                     try:
-                        outtmpl = os.path.join(folder, f"{int(playlist_index):02d} - %(title)s.%(ext)s")
+                        outtmpl = os.path.join(folder, f"{int(playlist_index):02d} - %(title).180B.%(ext)s")
                     except (ValueError, TypeError):
-                        outtmpl = os.path.join(folder, '%(title)s.%(ext)s')
+                        outtmpl = os.path.join(folder, '%(title).180B.%(ext)s')
                 else:
-                    outtmpl = os.path.join(folder, '%(title)s.%(ext)s')
+                    outtmpl = os.path.join(folder, '%(title).180B.%(ext)s')
 
                 ydl_opts = {
                     'outtmpl': outtmpl,
