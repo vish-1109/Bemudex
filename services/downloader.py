@@ -301,14 +301,14 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                             'preferredquality': quality if audio_format in ['mp3', 'm4a', 'aac'] else None,
                         }
                     ]
-                    if should_embed_thumbnail:
-                        postprocessors.append({'key': 'EmbedThumbnail'})
                     if embed_tags or embed_chapters:
                         postprocessors.append({
                             'key': 'FFmpegMetadata',
                             'add_metadata': embed_tags,
                             'add_chapters': embed_chapters
                         })
+                    if should_embed_thumbnail:
+                        postprocessors.append({'key': 'EmbedThumbnail'})
                         
                     worker_opts['postprocessors'] = postprocessors
                     
@@ -333,10 +333,10 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                         
                     worker_opts['merge_output_format'] = 'mp4'
                     postprocessors = []
-                    if embed_thumbnail:
-                        postprocessors.append({'key': 'EmbedThumbnail'})
                     if embed_tags:
                         postprocessors.append({'key': 'FFmpegMetadata', 'add_metadata': True})
+                    if embed_thumbnail:
+                        postprocessors.append({'key': 'EmbedThumbnail'})
                     worker_opts['postprocessors'] = postprocessors
                 
                 try:
@@ -469,14 +469,14 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                             'preferredquality': quality if audio_format in ['mp3', 'm4a', 'aac'] else None,
                         }
                     ]
-                    if should_embed_thumbnail:
-                        postprocessors.append({'key': 'EmbedThumbnail'})
                     if embed_tags or embed_chapters:
                         postprocessors.append({
                             'key': 'FFmpegMetadata',
                             'add_metadata': embed_tags,
                             'add_chapters': embed_chapters
                         })
+                    if should_embed_thumbnail:
+                        postprocessors.append({'key': 'EmbedThumbnail'})
                         
                     ydl_opts['postprocessors'] = postprocessors
                     
@@ -495,10 +495,10 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                         
                     ydl_opts['merge_output_format'] = 'mp4'
                     postprocessors = []
-                    if embed_thumbnail:
-                        postprocessors.append({'key': 'EmbedThumbnail'})
                     if embed_tags:
                         postprocessors.append({'key': 'FFmpegMetadata', 'add_metadata': True})
+                    if embed_thumbnail:
+                        postprocessors.append({'key': 'EmbedThumbnail'})
                     ydl_opts['postprocessors'] = postprocessors
                 
                 try:
