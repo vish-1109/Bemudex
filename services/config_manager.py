@@ -85,3 +85,21 @@ def save_last_folder(folder):
         save_config(config)
     except Exception as e:
         logger.error(f"Error saving last folder: {e}")
+
+
+def load_theme():
+    try:
+        config = load_config()
+        return config.get("theme", "dark")
+    except Exception as e:
+        logger.error(f"Error loading theme from config: {e}")
+    return "dark"
+
+
+def save_theme(theme_name):
+    try:
+        config = load_config()
+        config["theme"] = theme_name
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving theme to config: {e}")

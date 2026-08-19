@@ -209,7 +209,7 @@ function App() {
 
   // Settings
   const [dependencies, setDependencies] = useState({
-    bemudex: { version: 'v2.0.2', build: '2026.07.20', release_channel: 'stable' },
+    bemudex: { version: 'v2.0.3', build: '2026.08.19', release_channel: 'stable' },
     ytdlp: { version: '...', latestVersion: '', status: 'unknown', updateAvailable: false, checking: false, updating: false },
     ffmpeg: { installed: false, version: '', path: '', checking: false },
     folderWritable: false,
@@ -232,9 +232,14 @@ function App() {
     const s = localStorage.getItem('autoUpdateCheck');
     return s !== null ? JSON.parse(s) : true;
   });
-  const [darkMode, setDarkMode] = useState(() => {
-    const s = localStorage.getItem('darkMode');
-    return s !== null ? JSON.parse(s) : true;
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) return savedTheme;
+    const legacyDark = localStorage.getItem('darkMode');
+    if (legacyDark !== null) {
+      return JSON.parse(legacyDark) ? 'dark' : 'light';
+    }
+    return 'dark';
   });
   const [collapsed, setCollapsed] = useState(() => {
     const s = localStorage.getItem('sidebarCollapsed');
@@ -277,7 +282,10 @@ function App() {
   useEffect(() => { localStorage.setItem('showNotification', JSON.stringify(showNotification)); }, [showNotification]);
   useEffect(() => { localStorage.setItem('embedThumbnail', JSON.stringify(embedThumbnail)); }, [embedThumbnail]);
   useEffect(() => { localStorage.setItem('autoUpdateCheck', JSON.stringify(autoUpdateCheck)); }, [autoUpdateCheck]);
-  useEffect(() => { localStorage.setItem('darkMode', JSON.stringify(darkMode)); }, [darkMode]);
+  useEffect(() => { 
+    localStorage.setItem('theme', theme); 
+    callApi('set_theme', theme).catch(() => {});
+  }, [theme]);
   useEffect(() => { localStorage.setItem('sidebarCollapsed', JSON.stringify(collapsed)); }, [collapsed]);
   useEffect(() => { localStorage.setItem('panelWidth', panelWidth.toString()); }, [panelWidth]);
   useEffect(() => {
@@ -395,13 +403,18 @@ function App() {
     const init = async () => {
       if (window.pywebview?.api && Object.keys(window.pywebview.api).length > 0) {
         try {
-          const [lastFolder, depStatus] = await Promise.all([
+          const [lastFolder, depStatus, savedTheme] = await Promise.all([
             callApi('load_last_folder').catch(() => null),
             callApi('get_dependency_status').catch(e => {
               console.error('Failed to load dependency status:', e);
               return null;
-            })
+            }),
+            callApi('get_theme').catch(() => null)
           ]);
+
+          if (savedTheme) {
+            setTheme(savedTheme);
+          }
 
           if (lastFolder) {
             setFolder(lastFolder);
@@ -1137,7 +1150,7 @@ function App() {
   const handleViewDiagnostics = async () => {
     setLoadingDiagnostics(true);
     try {
-      const res = await callApi('get_diagnostics', darkMode ? 'dark' : 'light');
+      const res = await callApi('get_diagnostics', theme);
       if (res && !res.error) {
         setDiagnostics(res);
         setShowDiagnosticsModal(true);
@@ -1192,13 +1205,27 @@ function App() {
 
   /* ─── AVAILABLE RESOLUTIONS ─── */
   const availableResolutions = useMemo(() => {
-    return metadata?.resolutions || [2160, 1440, 1080, 720, 480];
+    const defaultPresets = [2160, 1440, 1080, 720, 480];
+    if (metadata?.resolutions && metadata.resolutions.length > 0) {
+      const filtered = metadata.resolutions.filter(h => h >= 480);
+      if (filtered.length > 0) {
+        return filtered;
+      }
+    }
+    return defaultPresets;
   }, [metadata]);
+
+  const themeClass = theme === 'light' ? 'theme-light' 
+    : theme === 'creole-matcha' ? 'theme-creole-matcha'
+    : theme === 'lavender-tonic' ? 'theme-lavender-tonic'
+    : theme === 'masterpiece-red' ? 'theme-masterpiece-red'
+    : theme === 'imperial-blue' ? 'theme-imperial-blue'
+    : '';
 
   /* ─────────────────────── RENDER ─────────────────────── */
   return (
     <div
-      className={`app-shell ${showPanel ? 'has-panel' : ''} ${collapsed ? 'sidebar-collapsed' : ''} ${darkMode ? '' : 'theme-light'}`}
+      className={`app-shell ${showPanel ? 'has-panel' : ''} ${collapsed ? 'sidebar-collapsed' : ''} ${themeClass}`}
       style={{ '--panel-width': `${panelWidth}px` }}
     >
 
@@ -1630,7 +1657,7 @@ function App() {
                           <span className="quality-card-label">Available</span>
                           {metadata?.resolution_sizes?.['best'] && <span className="quality-card-size">{metadata.resolution_sizes['best']}</span>}
                         </div>
-                        {availableResolutions.filter(h => h >= 480).map(h => {
+                        {availableResolutions.map(h => {
                           const estSize = metadata?.resolution_sizes?.[String(h)];
                           return (
                             <div
@@ -1959,13 +1986,22 @@ function App() {
                 </div>
                 <div className="settings-item">
                   <div className="settings-item-info">
-                    <span className="settings-item-label">Dark Mode</span>
-                    <span className="settings-item-desc">Enable the modern pitch-black theme.</span>
+                    <span className="settings-item-label">Theme</span>
+                    <span className="settings-item-desc">Choose your preferred appearance and color palette.</span>
                   </div>
-                  <label className="toggle" aria-label="Toggle dark mode">
-                    <input type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)} />
-                    <span className="toggle-track" />
-                  </label>
+                  <select
+                    className="settings-select"
+                    value={theme}
+                    onChange={e => setTheme(e.target.value)}
+                    aria-label="Theme selection"
+                  >
+                    <option value="dark">🖤 Onyx Dark (Pitch Black)</option>
+                    <option value="light">☀️ Minimal Light</option>
+                    <option value="creole-matcha">🍵 Creole Matcha (Brown &amp; Yellow Green)</option>
+                    <option value="lavender-tonic">💜 Lavender Tonic (Champion Blue &amp; Lavender)</option>
+                    <option value="masterpiece-red">🍷 Masterpiece Red (Velvet Red &amp; Dirty White)</option>
+                    <option value="imperial-blue">🌊 Imperial Blue (Cobalt &amp; White)</option>
+                  </select>
                 </div>
                 <div className="settings-item">
                   <div className="settings-item-info">

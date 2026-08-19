@@ -2445,6 +2445,10 @@
   background: #ffffff;
 }
 
+.theme-creole-matcha .confirm-box {
+  background: #1F0E06;
+}
+
 .confirm-icon {
   width: 44px;
   height: 44px;

@@ -101,7 +101,7 @@ else:
 
 
 
-from services.config_manager import load_config, save_config, load_last_folder, save_last_folder
+from services.config_manager import load_config, save_config, load_last_folder, save_last_folder, load_theme, save_theme
 from services.history_manager import load_history, save_history, get_file_size_str
 from services.clipboard_manager import get_clipboard_text, read_clipboard, copy_to_clipboard
 from services.dependency_manager import DependencyManager
@@ -122,9 +122,9 @@ def platform_open(path):
         if sys.platform == "win32":
             os.startfile(path)
         elif sys.platform == "darwin":
-            subprocess.run(["open", path], check=True)
+            subprocess.Popen(["open", path])
         else:
-            subprocess.run(["xdg-open", path], check=True)
+            subprocess.Popen(["xdg-open", path])
         return True
     except Exception as e:
         logger.error(f"Platform open error for {path}: {e}")
@@ -157,6 +157,13 @@ class Api:
 
     def load_last_folder(self):
         return load_last_folder()
+
+    def get_theme(self):
+        return load_theme()
+
+    def set_theme(self, theme_name):
+        save_theme(theme_name)
+        return True
 
     def read_clipboard(self):
         return read_clipboard()
@@ -540,17 +547,26 @@ class Api:
             if not folder or not os.path.exists(folder):
                 return {"exists": False}
 
-            # Sanitise title
-            sanitized = title
-            for c in r'\/:*?"<>|':
-                sanitized = sanitized.replace(c, '_')
-
+            import yt_dlp.utils
             ext = 'mp4' if download_type == 'video' else audio_format
+            sanitized = yt_dlp.utils.sanitize_filename(title)
             expected_path = os.path.join(folder, f"{sanitized}.{ext}")
 
-            exists = os.path.exists(expected_path)
-            logger.info(f"Overwrite check for {expected_path}: exists={exists}")
-            return {"exists": exists, "path": expected_path}
+            if os.path.exists(expected_path):
+                logger.info(f"Overwrite match found: {expected_path}")
+                return {"exists": True, "path": expected_path}
+
+            # Also check if any existing file in folder has matching base title
+            clean_title = "".join(c for c in title.lower() if c.isalnum())
+            for f in os.listdir(folder):
+                if f.endswith(f".{ext}"):
+                    f_clean = "".join(c for c in f.lower() if c.isalnum())
+                    if clean_title and (clean_title in f_clean or f_clean.startswith(clean_title[:15])):
+                        matched_path = os.path.join(folder, f)
+                        logger.info(f"Overwrite fuzzy match found: {matched_path}")
+                        return {"exists": True, "path": matched_path}
+
+            return {"exists": False}
         except Exception as e:
             logger.error(f"Error checking overwrite: {e}")
             return {"exists": False}
@@ -819,6 +835,28 @@ if __name__ == '__main__':
             return res
         return True
 
-    window.events.closing += on_closing
+    def set_app_icon():
+        try:
+            from PyQt6.QtWidgets import QApplication
+            from PyQt6.QtGui import QIcon, QGuiApplication
+            if getattr(sys, 'frozen', False):
+                icon_path = os.path.join(sys._MEIPASS, 'assets', 'bemudex_256.png')
+            else:
+                icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'bemudex_256.png')
+            
+            QGuiApplication.setApplicationName("Bemudex")
+            QGuiApplication.setApplicationDisplayName("Bemudex")
+            QGuiApplication.setDesktopFileName("org.bemudex.Bemudex")
+            if os.path.exists(icon_path):
+                q_icon = QIcon(icon_path)
+                app_inst = QApplication.instance()
+                if app_inst:
+                    app_inst.setWindowIcon(q_icon)
+                if hasattr(window, 'native') and window.native:
+                    window.native.setWindowIcon(q_icon)
+                logger.info(f"Application window icon set from {icon_path}")
+        except Exception as e:
+            logger.warning(f"Could not set window icon: {e}")
 
-    webview.start(debug=IS_DEV)
+    window.events.shown += set_app_icon
+    webview.start(set_app_icon, debug=IS_DEV, gui='qt')

@@ -81,6 +81,11 @@
   </keywords>
 
   <releases>
+    <release version="2.0.3" date="2026-08-19">
+      <description>
+        <p>Fixed YouTube 403 Forbidden stream error by updating extractor client headers (Mobile Web &amp; iOS), added live window and taskbar application icons, and improved Open Folder file manager responsiveness.</p>
+      </description>
+    </release>
     <release version="2.0.2" date="2026-07-20">
       <description>
         <p>Fixed AppImage compatibility on Arch-based distributions (resolving library loading conflicts for system FFmpeg and SSL certificate lookup issues for update server reachability).</p>

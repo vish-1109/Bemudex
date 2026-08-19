@@ -255,10 +255,16 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                     'logger': EntryLogger(),
                     'retries': 3,
                     'fragment_retries': 3,
+                    'overwrites': True
                 }
                 
                 if ratelimit:
                     worker_opts['ratelimit'] = ratelimit
+
+                if download_type == 'audio':
+                    temp_dir = os.path.join(folder, '.bemudex_temp')
+                    os.makedirs(temp_dir, exist_ok=True)
+                    worker_opts['paths'] = {'temp': temp_dir}
 
                 should_embed_thumbnail = embed_thumbnail and not (download_type == 'audio' and audio_format == 'wav')
                 
@@ -417,10 +423,16 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                     'logger': SingleLogger(),
                     'retries': 3,
                     'fragment_retries': 3,
+                    'overwrites': True
                 }
                 
                 if ratelimit:
                     ydl_opts['ratelimit'] = ratelimit
+
+                if download_type == 'audio':
+                    temp_dir = os.path.join(folder, '.bemudex_temp')
+                    os.makedirs(temp_dir, exist_ok=True)
+                    ydl_opts['paths'] = {'temp': temp_dir}
 
                 should_embed_thumbnail = embed_thumbnail and not (download_type == 'audio' and audio_format == 'wav')
                 

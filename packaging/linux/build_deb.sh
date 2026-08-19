@@ -10,13 +10,17 @@ npm run build
 cd ..
 
 echo "🔍 Validating venv dependencies against requirements.txt..."
-PYTHON_BIN="./venv/bin/python" && [ -d "venv" ] || PYTHON_BIN="python3"
+if [ -d "venv" ]; then
+    PYTHON_BIN="./venv/bin/python"
+else
+    PYTHON_BIN="python3"
+fi
 MISSING=0
 while IFS= read -r pkg || [ -n "$pkg" ]; do
     [[ -z "$pkg" || "$pkg" == \#* ]] && continue
-    pkg_name=$(echo "$pkg" | sed 's/[>=<!].*//' | tr '[:upper:]' '[:lower:]' | tr '-' '_')
-    if ! $PYTHON_BIN -c "import importlib; importlib.import_module('$pkg_name')" 2>/dev/null; then
-        echo "❌ Missing dependency: $pkg  (import name: $pkg_name)"
+    pkg_clean=$(echo "$pkg" | sed 's/[>=<!].*//' | tr -d '[:space:]')
+    if ! $PYTHON_BIN -c "import importlib.metadata; importlib.metadata.version('$pkg_clean')" 2>/dev/null; then
+        echo "❌ Missing dependency: $pkg_clean"
         MISSING=1
     fi
 done < requirements.txt
@@ -89,6 +93,6 @@ chmod 755 build/debian/DEBIAN/postrm
 
 echo "🔨 Building Debian package..."
 mkdir -p dist
-dpkg-deb --root-owner-group --build build/debian dist/bemudex_2.0.2_amd64.deb
+dpkg-deb --root-owner-group --build build/debian dist/bemudex_2.0.3_amd64.deb
 
-echo "🎉 Debian package built at dist/bemudex_2.0.2_amd64.deb"
+echo "🎉 Debian package built at dist/bemudex_2.0.3_amd64.deb"

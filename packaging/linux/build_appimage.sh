@@ -10,15 +10,17 @@ npm run build
 cd ..
 
 echo "🔍 Validating venv dependencies against requirements.txt..."
-PYTHON_BIN="./venv/bin/python" && [ -d "venv" ] || PYTHON_BIN="python3"
+if [ -d "venv" ]; then
+    PYTHON_BIN="./venv/bin/python"
+else
+    PYTHON_BIN="python3"
+fi
 MISSING=0
 while IFS= read -r pkg || [ -n "$pkg" ]; do
-    # Skip blank lines and comments
     [[ -z "$pkg" || "$pkg" == \#* ]] && continue
-    # Strip version specifiers (e.g. package>=1.0 -> package)
-    pkg_name=$(echo "$pkg" | sed 's/[>=<!].*//' | tr '[:upper:]' '[:lower:]' | tr '-' '_')
-    if ! $PYTHON_BIN -c "import importlib; importlib.import_module('$pkg_name')" 2>/dev/null; then
-        echo "❌ Missing dependency: $pkg  (import name: $pkg_name)"
+    pkg_clean=$(echo "$pkg" | sed 's/[>=<!].*//' | tr -d '[:space:]')
+    if ! $PYTHON_BIN -c "import importlib.metadata; importlib.metadata.version('$pkg_clean')" 2>/dev/null; then
+        echo "❌ Missing dependency: $pkg_clean"
         MISSING=1
     fi
 done < requirements.txt
@@ -58,6 +60,7 @@ cp packaging/linux/org.bemudex.Bemudex.metainfo.xml build/AppDir/usr/share/metai
 # Symlink desktop file and icon to the AppDir root (required by AppImage specification)
 ln -sf usr/share/applications/org.bemudex.Bemudex.desktop build/AppDir/org.bemudex.Bemudex.desktop
 ln -sf usr/share/icons/hicolor/256x256/apps/org.bemudex.Bemudex.png build/AppDir/org.bemudex.Bemudex.png
+ln -sf usr/share/icons/hicolor/256x256/apps/org.bemudex.Bemudex.png build/AppDir/.DirIcon
 
 # Copy and prepare AppRun
 cp packaging/linux/AppRun build/AppDir/AppRun
@@ -79,6 +82,7 @@ fi
 echo "🔨 Packaging AppImage..."
 mkdir -p dist
 export ARCH=x86_64
+export APPIMAGE_EXTRACT_AND_RUN=1
 $APPIMAGE_TOOL build/AppDir dist/Bemudex-x86_64.AppImage
 
 echo "🎉 AppImage built successfully at dist/Bemudex-x86_64.AppImage"
