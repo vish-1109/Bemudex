@@ -30,8 +30,9 @@ from services.config_manager import load_config, save_config
 
 def normalize_version(ver_str):
     try:
+        cleaned = re.sub(r'\.dev\d*|\.post\d*|\+.*', '', str(ver_str).strip())
         parts = []
-        for p in str(ver_str).strip().split('.'):
+        for p in cleaned.split('.'):
             digits = re.match(r'^\d+', p)
             if digits:
                 parts.append(int(digits.group(0)))
@@ -121,9 +122,14 @@ class DependencyManager:
                 YT_DLP_PYPI_URL,
                 headers={"User-Agent": f"Bemudex/{VERSION}"}
             )
-            with urllib.request.urlopen(req, timeout=3, context=ssl_context) as response:
+            with urllib.request.urlopen(req, timeout=5, context=ssl_context) as response:
                 data = json.loads(response.read().decode())
-                latest_version = data["info"]["version"]
+                releases = data.get("releases", {})
+                if releases:
+                    sorted_versions = sorted(releases.keys(), key=normalize_version)
+                    latest_version = sorted_versions[-1]
+                else:
+                    latest_version = data["info"]["version"]
 
             installed_version = self.versions()["ytdlp"]["version"]
             installed_norm = normalize_version(installed_version)
@@ -167,11 +173,20 @@ class DependencyManager:
             )
             with urllib.request.urlopen(req, timeout=10, context=ssl_context) as response:
                 data = json.loads(response.read().decode())
-                latest_version = data["info"]["version"]
-                for item in data.get("urls", []):
-                    if item.get("packagetype") == "bdist_wheel":
-                        wheel_url = item.get("url")
-                        break
+                releases = data.get("releases", {})
+                if releases:
+                    sorted_versions = sorted(releases.keys(), key=normalize_version)
+                    latest_version = sorted_versions[-1]
+                    for item in releases.get(latest_version, []):
+                        if item.get("packagetype") == "bdist_wheel":
+                            wheel_url = item.get("url")
+                            break
+                else:
+                    latest_version = data["info"]["version"]
+                    for item in data.get("urls", []):
+                        if item.get("packagetype") == "bdist_wheel":
+                            wheel_url = item.get("url")
+                            break
         except Exception as e:
             logger.error(f"Failed to fetch PyPI metadata during update: {e}")
             return {
@@ -374,7 +389,7 @@ class DependencyManager:
                 YT_DLP_PYPI_URL,
                 headers={"User-Agent": f"Bemudex/{VERSION}"}
             )
-            with urllib.request.urlopen(req, timeout=2, context=ssl_context) as response:
+            with urllib.request.urlopen(req, timeout=2, context=ssl_context):
                 pass
         except Exception as e:
             internet_status = f"Disconnected / Unreachable ({str(e)})"

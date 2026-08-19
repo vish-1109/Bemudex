@@ -267,6 +267,7 @@ function App() {
   const toastIdRef = useRef(0);
   const notifier = useMemo(() => new NotificationManager(setToasts, toastIdRef), []);
   const startupCheckedRef = useRef(false);
+  const hasInitializedRef = useRef(false);
 
   const showToast = useCallback((message, type = 'info', duration = 4000) => {
     notifier.show(message, type, duration);
@@ -401,7 +402,9 @@ function App() {
     let retryTimer = null;
 
     const init = async () => {
+      if (hasInitializedRef.current) return;
       if (window.pywebview?.api && Object.keys(window.pywebview.api).length > 0) {
+        hasInitializedRef.current = true;
         try {
           const [lastFolder, depStatus, savedTheme] = await Promise.all([
             callApi('load_last_folder').catch(() => null),

@@ -163,6 +163,7 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                 'extract_flat': 'in_playlist',
                 'skip_download': True,
                 'ignoreerrors': True,
+                'js_runtimes': {'bun': {}, 'node': {}, 'deno': {}},
             }
             ffmpeg_path = get_ffmpeg_path()
             if ffmpeg_path:
@@ -250,12 +251,12 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                     'outtmpl': os.path.join(folder, f"{idx:02d} - %(title)s.%(ext)s"),
                     'progress_hooks': [hook],
                     'postprocessor_hooks': [post_hook],
-                    'ignoreerrors': True,
                     'allow_playlist_files': False,
                     'logger': EntryLogger(),
                     'retries': 3,
                     'fragment_retries': 3,
-                    'overwrites': True
+                    'overwrites': True,
+                    'js_runtimes': {'bun': {}, 'node': {}, 'deno': {}},
                 }
                 
                 if ratelimit:
@@ -418,12 +419,12 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                     'outtmpl': outtmpl,
                     'progress_hooks': [hook],
                     'postprocessor_hooks': [post_hook],
-                    'ignoreerrors': True,
                     'allow_playlist_files': False,
                     'logger': SingleLogger(),
                     'retries': 3,
                     'fragment_retries': 3,
-                    'overwrites': True
+                    'overwrites': True,
+                    'js_runtimes': {'bun': {}, 'node': {}, 'deno': {}},
                 }
                 
                 if ratelimit:
@@ -518,7 +519,11 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                 raise Exception("Download cancelled by user")
             
             with append_lock:
-                final_existing_files = [f for f in downloaded_files if os.path.exists(f)]
+                final_existing_files = [f for f in downloaded_files if os.path.exists(f) and os.path.getsize(f) > 0]
+            
+            if not final_existing_files:
+                raise Exception("No media files were generated. Download failed.")
+
             on_log("✅ All downloads completed successfully!")
         except Exception as e:
             was_cancelled = "cancelled" in str(e).lower()

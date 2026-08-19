@@ -12,6 +12,16 @@ if getattr(sys, 'frozen', False):
         else:
             os.environ.pop(var, None)
 
+# Ensure JS runtimes (bun, deno) installed in user home are discoverable by yt-dlp
+# for YouTube signature/n-parameter challenge solving.
+_js_runtime_dirs = [
+    os.path.join(os.path.expanduser('~'), '.bun', 'bin'),
+    os.path.join(os.path.expanduser('~'), '.deno', 'bin'),
+]
+for _d in _js_runtime_dirs:
+    if os.path.isdir(_d) and _d not in os.environ.get('PATH', ''):
+        os.environ['PATH'] = _d + os.pathsep + os.environ.get('PATH', '')
+
 import json
 import subprocess
 import threading
@@ -617,6 +627,7 @@ class Api:
                 ydl_opts = {
                     'skip_download': True,
                     'ignoreerrors': True,
+                    'js_runtimes': {'bun': {}, 'node': {}, 'deno': {}},
                 }
                 ffmpeg_path = get_ffmpeg_path()
                 if ffmpeg_path:
