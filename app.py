@@ -795,25 +795,18 @@ class Api:
 
 
 if __name__ == '__main__':
-    # Initialize Qt Application with identity & icon before window creation
+    # Initialize Qt attributes before QApplication is created by pywebview
     try:
-        from PyQt6.QtWidgets import QApplication
-        from PyQt6.QtGui import QIcon, QGuiApplication
-        qt_app = QApplication.instance() or QApplication(sys.argv)
-        qt_app.setApplicationName("Bemudex")
-        qt_app.setApplicationDisplayName("Bemudex")
-        qt_app.setDesktopFileName("org.bemudex.Bemudex")
+        from PyQt6.QtCore import QCoreApplication, Qt
+        from PyQt6.QtGui import QGuiApplication
+        import PyQt6.QtWebEngineWidgets  # Must be imported before QApplication is created
 
-        if getattr(sys, 'frozen', False):
-            icon_path = os.path.join(sys._MEIPASS, 'assets', 'bemudex_256.png')
-        else:
-            icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'bemudex_256.png')
-
-        if os.path.exists(icon_path):
-            q_icon = QIcon(icon_path)
-            qt_app.setWindowIcon(q_icon)
+        QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
+        QGuiApplication.setApplicationName("Bemudex")
+        QGuiApplication.setApplicationDisplayName("Bemudex")
+        QGuiApplication.setDesktopFileName("org.bemudex.Bemudex")
     except Exception as e:
-        logger.warning(f"Early Qt identity setup warning: {e}")
+        logger.warning(f"Early Qt setup warning: {e}")
 
     api = Api()
 
@@ -866,15 +859,15 @@ if __name__ == '__main__':
             return res
         return True
 
+    if getattr(sys, 'frozen', False):
+        icon_path = os.path.join(sys._MEIPASS, 'assets', 'bemudex_256.png')
+    else:
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'bemudex_256.png')
+
     def set_app_icon():
         try:
             from PyQt6.QtWidgets import QApplication
             from PyQt6.QtGui import QIcon, QGuiApplication
-            if getattr(sys, 'frozen', False):
-                icon_path = os.path.join(sys._MEIPASS, 'assets', 'bemudex_256.png')
-            else:
-                icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'bemudex_256.png')
-            
             QGuiApplication.setApplicationName("Bemudex")
             QGuiApplication.setApplicationDisplayName("Bemudex")
             QGuiApplication.setDesktopFileName("org.bemudex.Bemudex")
@@ -890,4 +883,4 @@ if __name__ == '__main__':
             logger.warning(f"Could not set window icon: {e}")
 
     window.events.shown += set_app_icon
-    webview.start(set_app_icon, debug=IS_DEV, gui='qt')
+    webview.start(set_app_icon, debug=IS_DEV, gui='qt', icon=icon_path if os.path.exists(icon_path) else None)
