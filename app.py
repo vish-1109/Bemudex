@@ -795,6 +795,26 @@ class Api:
 
 
 if __name__ == '__main__':
+    # Initialize Qt Application with identity & icon before window creation
+    try:
+        from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtGui import QIcon, QGuiApplication
+        qt_app = QApplication.instance() or QApplication(sys.argv)
+        qt_app.setApplicationName("Bemudex")
+        qt_app.setApplicationDisplayName("Bemudex")
+        qt_app.setDesktopFileName("org.bemudex.Bemudex")
+
+        if getattr(sys, 'frozen', False):
+            icon_path = os.path.join(sys._MEIPASS, 'assets', 'bemudex_256.png')
+        else:
+            icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'bemudex_256.png')
+
+        if os.path.exists(icon_path):
+            q_icon = QIcon(icon_path)
+            qt_app.setWindowIcon(q_icon)
+    except Exception as e:
+        logger.warning(f"Early Qt identity setup warning: {e}")
+
     api = Api()
 
     # Auto-detect development mode
