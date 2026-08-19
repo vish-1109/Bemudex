@@ -1,6 +1,37 @@
 #!/bin/sh
 SELF=$(readlink -f "$0")
 HERE=$(dirname "$SELF")
+# Desktop integration for GNOME/KDE/Wayland
+if [ -n "$APPIMAGE" ]; then
+    APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+    ICONS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/256x256/apps"
+    mkdir -p "$APPS_DIR" "$ICONS_DIR" 2>/dev/null || true
+    
+    TARGET_DESKTOP="$APPS_DIR/org.bemudex.Bemudex.desktop"
+    TARGET_ICON="$ICONS_DIR/org.bemudex.Bemudex.png"
+    
+    if [ ! -f "$TARGET_ICON" ]; then
+        cp "$HERE/usr/share/icons/hicolor/256x256/apps/org.bemudex.Bemudex.png" "$TARGET_ICON" 2>/dev/null || true
+    fi
+    
+    if [ ! -f "$TARGET_DESKTOP" ]; then
+        cat << EOF > "$TARGET_DESKTOP"
+[Desktop Entry]
+Name=Bemudex
+Comment=A modern desktop media downloader powered by yt-dlp and FFmpeg
+Exec="$APPIMAGE"
+Icon=org.bemudex.Bemudex
+Terminal=false
+Type=Application
+StartupWMClass=org.bemudex.Bemudex
+Categories=AudioVideo;Network;Utility;
+Keywords=downloader;video;audio;music;playlist;youtube;yt-dlp;ffmpeg;
+EOF
+        chmod +x "$TARGET_DESKTOP" 2>/dev/null || true
+        update-desktop-database "$APPS_DIR" 2>/dev/null || true
+    fi
+fi
+
 export PATH="$HERE/usr/bin:$PATH"
 export XDG_DATA_DIRS="$HERE/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 exec "$HERE/usr/bin/Bemudex" "$@"

@@ -794,7 +794,57 @@ class Api:
                     pass
 
 
+def ensure_desktop_integration():
+    """Ensure .desktop launcher and high-res icon are registered with desktop environments."""
+    if sys.platform != 'linux':
+        return
+    try:
+        home = os.path.expanduser('~')
+        apps_dir = os.path.join(home, '.local', 'share', 'applications')
+        icons_dir = os.path.join(home, '.local', 'share', 'icons', 'hicolor', '256x256', 'apps')
+        os.makedirs(apps_dir, exist_ok=True)
+        os.makedirs(icons_dir, exist_ok=True)
+
+        if getattr(sys, 'frozen', False):
+            source_icon = os.path.join(sys._MEIPASS, 'assets', 'bemudex_256.png')
+        else:
+            source_icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'bemudex_256.png')
+
+        target_icon = os.path.join(icons_dir, 'org.bemudex.Bemudex.png')
+        if os.path.exists(source_icon) and (not os.path.exists(target_icon) or os.path.getsize(target_icon) != os.path.getsize(source_icon)):
+            shutil.copy2(source_icon, target_icon)
+
+        target_desktop = os.path.join(apps_dir, 'org.bemudex.Bemudex.desktop')
+        appimage_path = os.environ.get('APPIMAGE')
+        exec_cmd = f'"{appimage_path}"' if appimage_path else 'Bemudex'
+
+        desktop_text = f"""[Desktop Entry]
+Name=Bemudex
+Comment=A modern desktop media downloader powered by yt-dlp and FFmpeg
+Exec={exec_cmd}
+Icon=org.bemudex.Bemudex
+Terminal=false
+Type=Application
+StartupWMClass=org.bemudex.Bemudex
+Categories=AudioVideo;Network;Utility;
+Keywords=downloader;video;audio;music;playlist;youtube;yt-dlp;ffmpeg;
+"""
+        if not os.path.exists(target_desktop):
+            with open(target_desktop, 'w', encoding='utf-8') as f:
+                f.write(desktop_text)
+        else:
+            with open(target_desktop, 'r', encoding='utf-8') as f:
+                cur = f.read()
+            if 'StartupWMClass=org.bemudex.Bemudex' not in cur or 'Icon=org.bemudex.Bemudex' not in cur or (appimage_path and appimage_path not in cur):
+                with open(target_desktop, 'w', encoding='utf-8') as f:
+                    f.write(desktop_text)
+    except Exception as e:
+        logger.warning(f"Desktop integration notice: {e}")
+
+
 if __name__ == '__main__':
+    ensure_desktop_integration()
+
     # Initialize Qt attributes before QApplication is created by pywebview
     try:
         from PyQt6.QtCore import QCoreApplication, Qt
