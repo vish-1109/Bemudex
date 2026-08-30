@@ -2,7 +2,7 @@
 
 # 🎧 Bemudex
 
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)
+![Platform](https://img.shields.io/badge/platform-Linux-blue)
 ![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)
 ![License](https://img.shields.io/badge/license-GPL--3.0-green.svg)
 ![Version](https://img.shields.io/badge/version-v2.0.3-orange.svg)
@@ -106,7 +106,7 @@ cd ..
 **4. Setup Python environment & run**
 ```bash
 python -m venv venv
-source venv/bin/activate  # venv\Scripts\activate on Windows
+source venv/bin/activate
 pip install -r requirements.txt
 python app.py
 ```

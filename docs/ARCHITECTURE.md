@@ -23,11 +23,11 @@ Bemudex/
 │   ├── __init__.py
 │   ├── config_manager.py    # Config file read/write; download folder management
 │   ├── history_manager.py   # Download history load/save; file size formatting
-│   ├── clipboard_manager.py # Cross-platform clipboard read/write
+│   ├── clipboard_manager.py # Linux clipboard read/write (PyQt6 / CLI fallback)
 │   ├── dependency_manager.py# FFmpeg detection; yt-dlp version check and update
 │   └── downloader.py        # Download engine: yt-dlp invocation, progress hooks, postprocessors
 │
-├── frontend/                # React/Vite frontend (unchanged by this refactor)
+├── frontend/                # React/Vite frontend
 │   └── src/
 │
 ├── assets/                  # Application icons and static assets
@@ -37,11 +37,13 @@ Bemudex/
 │   ├── API.md               # PyWebView API reference
 │   └── CONTRIBUTING.md      # Developer setup and contribution guide
 │
-├── tests/                   # Test suite (future)
+├── packaging/               # Linux packaging scripts and templates
+│   └── linux/               # AppImage and Debian package builders
+│
+├── tests/                   # Test suite
 │
 ├── requirements.txt         # Python dependencies
-├── Bemudex.spec             # PyInstaller build specification
-└── Bemudex_Installer.iss    # Inno Setup installer script (Windows)
+└── Bemudex.spec             # PyInstaller build specification
 ```
 
 ---

@@ -26,8 +26,7 @@ cd Bemudex
 
 ```bash
 python -m venv venv
-source venv/bin/activate   # Linux / macOS
-venv\Scripts\activate      # Windows
+source venv/bin/activate
 ```
 
 ### 3. Install Python dependencies
@@ -86,17 +85,19 @@ python app.py
 
 ---
 
-## Packaging (Windows)
+## Packaging (Linux)
+
+To build standalone Linux distribution packages (`.AppImage` and `.deb`):
 
 ```bash
-# Install PyInstaller
-pip install pyinstaller
+# Build AppImage
+./packaging/linux/build_appimage.sh
 
-# Build using the spec file
-pyinstaller Bemudex.spec
+# Build Debian package
+./packaging/linux/build_deb.sh
 ```
 
-The packaged executable will be in `dist/Bemudex/`.
+Packaged binaries will be located in `dist/`.
 
 ---
 
