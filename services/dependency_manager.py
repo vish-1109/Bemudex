@@ -48,11 +48,23 @@ class DependencyManager:
 
     def versions(self):
         ytdlp_ver = "Unknown"
-        try:
-            import yt_dlp
-            ytdlp_ver = yt_dlp.version.__version__
-        except Exception as e:
-            logger.error(f"Failed to get yt-dlp version: {e}")
+        user_version_py = os.path.join(YT_DLP_ENGINE_DIR, "version.py")
+        if os.path.exists(user_version_py):
+            try:
+                with open(user_version_py, "r", encoding="utf-8") as f:
+                    content = f.read()
+                m = re.search(r"__version__\s*=\s*['\"]([^'\"]+)['\"]", content)
+                if m:
+                    ytdlp_ver = m.group(1)
+            except Exception:
+                pass
+
+        if ytdlp_ver == "Unknown":
+            try:
+                import yt_dlp
+                ytdlp_ver = yt_dlp.version.__version__
+            except Exception as e:
+                logger.error(f"Failed to get yt-dlp version: {e}")
 
         return {
             "bemudex": {
@@ -315,10 +327,28 @@ class DependencyManager:
 
             if os.path.exists(YT_DLP_ENGINE_STAGE_DIR):
                 shutil.rmtree(YT_DLP_ENGINE_STAGE_DIR)
-                
+
+            # Live reload yt_dlp in memory
+            try:
+                for k in list(sys.modules.keys()):
+                    if k == 'yt_dlp' or k.startswith('yt_dlp.'):
+                        sys.modules.pop(k, None)
+                if YT_DLP_ENGINE_PARENT_DIR in sys.path:
+                    sys.path.remove(YT_DLP_ENGINE_PARENT_DIR)
+                sys.path.insert(0, YT_DLP_ENGINE_PARENT_DIR)
+                import yt_dlp
+                import yt_dlp.extractor.extractors
+                if 'workers.metadata_worker' in sys.modules:
+                    sys.modules['workers.metadata_worker'].yt_dlp = yt_dlp
+                if 'services.downloader' in sys.modules:
+                    sys.modules['services.downloader'].yt_dlp = yt_dlp
+                logger.info(f"Live reloaded updated yt-dlp engine (version: {yt_dlp.version.__version__})")
+            except Exception as ex:
+                logger.warning(f"Live reload after update failed: {ex}")
+
             return {
                 "status": "success",
-                "message": f"yt-dlp has been updated to version {latest_version}. Please restart Bemudex to apply the update.",
+                "message": f"yt-dlp has been updated to version {latest_version}.",
                 "version": latest_version
             }
         except Exception as e:
@@ -352,10 +382,70 @@ class DependencyManager:
             except Exception as e:
                 logger.error(f"Failed to remove user-installed engine on reset: {e}")
 
+        # Remove override directory from sys.path
+        while YT_DLP_ENGINE_PARENT_DIR in sys.path:
+            try:
+                sys.path.remove(YT_DLP_ENGINE_PARENT_DIR)
+            except ValueError:
+                break
+
+        # Evict all cached yt_dlp modules loaded from the user engine override
+        for k in list(sys.modules.keys()):
+            if k == 'yt_dlp' or k.startswith('yt_dlp.'):
+                sys.modules.pop(k, None)
+
+        # Re-import clean bundled yt_dlp engine
+        try:
+            import yt_dlp
+            import yt_dlp.extractor.extractors
+            if 'workers.metadata_worker' in sys.modules:
+                sys.modules['workers.metadata_worker'].yt_dlp = yt_dlp
+            if 'services.downloader' in sys.modules:
+                sys.modules['services.downloader'].yt_dlp = yt_dlp
+            logger.info(f"Clean bundled yt-dlp engine reloaded in memory (version: {yt_dlp.version.__version__})")
+        except Exception as ex:
+            logger.error(f"Failed to reload bundled yt-dlp engine after reset: {ex}")
+
         # Re-run detection
         detection = self.detect(force_recheck=True)
         logger.info(f"Re-run detection results: {detection}")
         return detection
+
+    def can_rollback(self):
+        return os.path.exists(YT_DLP_ENGINE_BACKUP_DIR) and os.path.exists(os.path.join(YT_DLP_ENGINE_BACKUP_DIR, "__init__.py"))
+
+    def rollback(self):
+        if not self.can_rollback():
+            return {"status": "error", "message": "No backup engine found to restore."}
+        try:
+            if os.path.exists(YT_DLP_ENGINE_DIR):
+                shutil.rmtree(YT_DLP_ENGINE_DIR)
+            shutil.copytree(YT_DLP_ENGINE_BACKUP_DIR, YT_DLP_ENGINE_DIR)
+            shutil.rmtree(YT_DLP_ENGINE_BACKUP_DIR)
+            logger.info("Successfully restored engine from backup folder.")
+
+            # Live reload yt_dlp in memory
+            try:
+                for k in list(sys.modules.keys()):
+                    if k == 'yt_dlp' or k.startswith('yt_dlp.'):
+                        sys.modules.pop(k, None)
+                if YT_DLP_ENGINE_PARENT_DIR in sys.path:
+                    sys.path.remove(YT_DLP_ENGINE_PARENT_DIR)
+                sys.path.insert(0, YT_DLP_ENGINE_PARENT_DIR)
+                import yt_dlp
+                import yt_dlp.extractor.extractors
+                if 'workers.metadata_worker' in sys.modules:
+                    sys.modules['workers.metadata_worker'].yt_dlp = yt_dlp
+                if 'services.downloader' in sys.modules:
+                    sys.modules['services.downloader'].yt_dlp = yt_dlp
+                logger.info(f"Live reloaded rolled-back yt-dlp engine (version: {yt_dlp.version.__version__})")
+            except Exception as ex:
+                logger.warning(f"Live reload after rollback failed: {ex}")
+
+            return {"status": "success", "message": "Successfully rolled back to the backup engine version."}
+        except Exception as e:
+            logger.error(f"Rollback failed: {e}")
+            return {"status": "error", "message": f"Rollback failed: {str(e)}"}
 
     def diagnostics(self, downloads_folder, current_theme="dark"):
         logger.info("Generating diagnostics report...")

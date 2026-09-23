@@ -1,6 +1,10 @@
-# Bemudex PyWebView API Reference
+# Bemudex API Reference (Historical - v2.x PyWebView)
 
-All methods are exposed via `window.pywebview.api` in the frontend. They correspond directly to public methods on the `Api` class in `app.py`.
+> [!NOTE]
+> This document details the historical PyWebView / JavaScript bridge API used in Bemudex 2.x.
+> In Bemudex 3.0+, the architecture is native PyQt6 (`main.py`), and components communicate directly via Python `QThread` workers (`workers/`) and Qt signals/slots.
+
+All methods were exposed via `window.pywebview.api` in the legacy frontend. They corresponded to public methods on the `Api` class in `app.py`.
 
 ---
 

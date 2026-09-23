@@ -4,11 +4,6 @@ set -e
 # Go to repository root
 CDPATH= cd "$(dirname "$0")/../.."
 
-echo "📦 Building Vite frontend..."
-cd frontend
-npm run build
-cd ..
-
 echo "🔍 Validating venv dependencies against requirements.txt..."
 if [ -d "venv" ]; then
     PYTHON_BIN="./venv/bin/python"
@@ -46,12 +41,15 @@ mkdir -p build/debian/DEBIAN
 mkdir -p build/debian/usr/bin
 mkdir -p build/debian/usr/share/applications
 mkdir -p build/debian/usr/share/pixmaps
-mkdir -p build/debian/usr/share/icons/hicolor/256x256/apps
 mkdir -p build/debian/usr/share/metainfo
 mkdir -p build/debian/usr/share/doc/bemudex
 
-# Copy control template and postrm script
+# Copy control template and maintainer scripts
 cp packaging/linux/control build/debian/DEBIAN/control
+if [ -f "packaging/linux/postinst" ]; then
+    cp packaging/linux/postinst build/debian/DEBIAN/postinst
+    chmod 755 build/debian/DEBIAN/postinst
+fi
 cp packaging/linux/postrm build/debian/DEBIAN/postrm
 chmod 755 build/debian/DEBIAN/postrm
 
@@ -63,12 +61,24 @@ cat << 'EOF' > build/debian/usr/bin/bemudex
 #!/bin/sh
 exec "/usr/bin/Bemudex" "$@"
 EOF
-chmod +x build/debian/usr/bin/bemudex
+chmod 755 build/debian/usr/bin/bemudex
 
 # Copy desktop and icon assets
 cp packaging/linux/org.bemudex.Bemudex.desktop build/debian/usr/share/applications/
 cp assets/bemudex_256.png build/debian/usr/share/pixmaps/org.bemudex.Bemudex.png
-cp assets/bemudex_256.png build/debian/usr/share/icons/hicolor/256x256/apps/org.bemudex.Bemudex.png
+
+# Copy complete hicolor icon resolution suite
+for size_dir in assets/icons/*x*; do
+    [ -d "$size_dir" ] || continue
+    size=$(basename "$size_dir")
+    mkdir -p "build/debian/usr/share/icons/hicolor/${size}/apps"
+    cp "${size_dir}/org.bemudex.Bemudex.png" "build/debian/usr/share/icons/hicolor/${size}/apps/"
+done
+
+if [ -d "assets/icons/scalable" ]; then
+    mkdir -p build/debian/usr/share/icons/hicolor/scalable/apps
+    cp assets/icons/scalable/org.bemudex.Bemudex.svg build/debian/usr/share/icons/hicolor/scalable/apps/
+fi
 
 # Copy AppStream metainfo
 cp packaging/linux/org.bemudex.Bemudex.metainfo.xml build/debian/usr/share/metainfo/
@@ -87,12 +97,16 @@ echo "🔒 Setting standard permissions..."
 find build/debian -type d -exec chmod 755 {} +
 # Ensure desktop files, icons, metadata, and doc files have 644
 find build/debian/usr/share -type f -exec chmod 644 {} +
-# Ensure DEBIAN control files have 644, postrm has 755
+# Ensure DEBIAN control files have 644, maintainer scripts have 755
 chmod 644 build/debian/DEBIAN/control
+[ -f "build/debian/DEBIAN/postinst" ] && chmod 755 build/debian/DEBIAN/postinst
 chmod 755 build/debian/DEBIAN/postrm
 
 echo "🔨 Building Debian package..."
 mkdir -p dist
-dpkg-deb --root-owner-group -Zzstd --build build/debian dist/bemudex_2.0.3_amd64.deb
+DEB_VERSION=$(grep -m1 '^Version:' packaging/linux/control | awk '{print $2}')
+DEB_ARCH=$(grep -m1 '^Architecture:' packaging/linux/control | awk '{print $2}')
+DEB_FILE="dist/bemudex_${DEB_VERSION}_${DEB_ARCH}.deb"
+dpkg-deb --root-owner-group -Zzstd --build build/debian "$DEB_FILE"
 
-echo "🎉 Debian package built at dist/bemudex_2.0.3_amd64.deb"
+echo "🎉 Debian package built at $DEB_FILE"

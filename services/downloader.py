@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import threading
 import json
 import yt_dlp
@@ -33,7 +34,8 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                    on_playlist_metadata=None, stop_event=None,
                    audio_format='mp3', title=None, artist=None,
                    embed_thumbnail=True, embed_tags=True, embed_chapters=True,
-                   custom_thumbnail=None, ratelimit=None, playlist_index=None):
+                   custom_thumbnail=None, ratelimit=None, playlist_index=None,
+                   embed_subtitles=False):
     downloaded_files = []
     append_lock = threading.Lock()
 
@@ -156,6 +158,8 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
 
     def run():
         is_playlist = False
+        playlist_title = ""
+        target_folder = folder
         entries = []
         was_cancelled = False
         final_existing_files = []
@@ -178,6 +182,18 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                     if info:
                         if '_type' in info and info['_type'] == 'playlist':
                             is_playlist = True
+                            raw_title = info.get('title') or title or 'Playlist'
+                            clean_title = re.sub(r'[\\/*?:"<>|]', '', str(raw_title))
+                            clean_title = re.sub(r'[\x00-\x1f\x7f]', '', clean_title).strip('. ')
+                            playlist_title = clean_title or "Playlist"
+
+                            if os.path.basename(os.path.normpath(folder)).lower() == playlist_title.lower():
+                                target_folder = folder
+                            else:
+                                target_folder = os.path.join(folder, playlist_title)
+
+                            os.makedirs(target_folder, exist_ok=True)
+                            on_log(f"📁 Saving playlist to: {os.path.basename(target_folder)}")
                             entries = info.get('entries', [])
                             items = []
                             for i, entry in enumerate(entries):
@@ -187,18 +203,14 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                                         'title': entry.get('title', 'Extracting video info...'),
                                         'format': download_type,
                                         'quality': quality,
-                                        'index': i + 1
+                                        'index': i + 1,
+                                        'folder': target_folder
                                     })
                             if items and on_playlist_metadata:
-                                on_playlist_metadata(items)
-                        else:
-                            if on_playlist_metadata:
-                                on_playlist_metadata([{
-                                    'id': info.get('id', 'temp_id'),
-                                    'title': info.get('title', 'Extracting video info...'),
-                                    'format': download_type,
-                                    'quality': quality
-                                }])
+                                try:
+                                    on_playlist_metadata(items, target_folder)
+                                except TypeError:
+                                    on_playlist_metadata(items)
                 except Exception as e:
                     logger.error(f"Error extracting playlist metadata: {e}")
 
@@ -210,7 +222,9 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                 if stop_event and stop_event.is_set():
                     return
                 video_id = entry.get('id', 'temp_id')
-                entry_url = f"https://www.youtube.com/watch?v={video_id}"
+                entry_url = entry.get('webpage_url') or entry.get('url')
+                if not entry_url or not str(entry_url).startswith(('http://', 'https://')):
+                    entry_url = f"https://www.youtube.com/watch?v={video_id}"
                 
                 class EntryLogger:
                     def debug(self, msg):
@@ -249,9 +263,41 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                             'format': download_type,
                             'quality': quality
                         })
+                # Resume/retry support: skip tracks that were already downloaded in the destination folder
+                prefix = f"{idx:02d} - "
+                try:
+                    existing_tracks = [
+                        f for f in os.listdir(target_folder)
+                        if f.startswith(prefix)
+                        and not f.endswith(('.part', '.ytdl', '.temp'))
+                        and os.path.isfile(os.path.join(target_folder, f))
+                        and os.path.getsize(os.path.join(target_folder, f)) > 1024
+                    ]
+                    if existing_tracks:
+                        full_existing_path = os.path.join(target_folder, existing_tracks[0])
+                        on_log(f"⏩ Track {idx} already exists on disk: {existing_tracks[0]}")
+                        with append_lock:
+                            if full_existing_path not in downloaded_files:
+                                downloaded_files.append(full_existing_path)
+                        on_progress({
+                            'id': video_id,
+                            'title': entry.get('title', existing_tracks[0]),
+                            'percent': 100,
+                            'speed': '0 KB/s',
+                            'eta': '0:00',
+                            'sizeInfo': 'Finished',
+                            'status': 'finished',
+                            'format': download_type,
+                            'quality': quality,
+                            'filePath': full_existing_path,
+                            'thumbnail': entry.get('thumbnail', '')
+                        })
+                        return
+                except Exception as e:
+                    logger.debug(f"Track resume check error: {e}")
 
                 worker_opts = {
-                    'outtmpl': os.path.join(folder, f"{idx:02d} - %(title).180B.%(ext)s"),
+                    'outtmpl': os.path.join(target_folder, f"{idx:02d} - %(title).180B.%(ext)s"),
                     'progress_hooks': [hook],
                     'postprocessor_hooks': [post_hook],
                     'allow_playlist_files': False,
@@ -266,7 +312,7 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                     worker_opts['ratelimit'] = ratelimit
 
                 if download_type == 'audio':
-                    temp_dir = os.path.join(folder, '.bemudex_temp')
+                    temp_dir = os.path.join(target_folder, '.bemudex_temp')
                     os.makedirs(temp_dir, exist_ok=True)
                     worker_opts['paths'] = {'temp': temp_dir}
 
@@ -314,9 +360,10 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                     
                     ffmpeg_args = []
                     if is_playlist:
-                        if title:
+                        album_val = playlist_title or title
+                        if album_val:
                             # Use playlist title as the album metadata tag
-                            ffmpeg_args.extend(['-metadata', f'album={title}'])
+                            ffmpeg_args.extend(['-metadata', f'album={album_val}'])
                     else:
                         if title:
                             # Use custom title as the track title metadata tag
@@ -337,6 +384,11 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                         postprocessors.append({'key': 'FFmpegMetadata', 'add_metadata': True})
                     if embed_thumbnail:
                         postprocessors.append({'key': 'EmbedThumbnail'})
+                    if embed_subtitles:
+                        worker_opts['writesubtitles'] = True
+                        worker_opts['writeautomaticsub'] = True
+                        worker_opts['subtitleslangs'] = ['en', 'en-US', 'en-GB']
+                        postprocessors.append({'key': 'FFmpegEmbedSubtitle', 'already_have_subtitle': False})
                     worker_opts['postprocessors'] = postprocessors
                 
                 try:
@@ -366,7 +418,6 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                         for future in futures:
                             future.result()
             else:
-                import re
                 single_video_id = 'temp_id'
                 match = re.search(r'(?:v=|\/)([a-zA-Z0-9_-]{11})(?:&|#|\?|$)', url)
                 if match:
@@ -499,6 +550,11 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
                         postprocessors.append({'key': 'FFmpegMetadata', 'add_metadata': True})
                     if embed_thumbnail:
                         postprocessors.append({'key': 'EmbedThumbnail'})
+                    if embed_subtitles:
+                        ydl_opts['writesubtitles'] = True
+                        ydl_opts['writeautomaticsub'] = True
+                        ydl_opts['subtitleslangs'] = ['en', 'en-US', 'en-GB']
+                        postprocessors.append({'key': 'FFmpegEmbedSubtitle', 'already_have_subtitle': False})
                     ydl_opts['postprocessors'] = postprocessors
                 
                 try:
@@ -542,20 +598,41 @@ def start_download(url, folder, download_type, quality, on_progress, on_log, on_
             try:
                 import time
                 current_time = time.time()
-                for item in os.listdir(folder):
-                    if item.startswith('.') and ('_custom_cover_' in item or 'write_test' in item):
-                        try:
-                            os.remove(os.path.join(folder, item))
-                        except Exception:
-                            pass
-                    if item.endswith(('.webp', '.jpg', '.jpeg', '.png', '.part', '.ytdl')):
-                        full_path = os.path.join(folder, item)
-                        if os.path.isfile(full_path) and (current_time - os.path.getmtime(full_path) < 120):
+                cleanup_dirs = [folder]
+                if is_playlist and target_folder != folder and os.path.exists(target_folder):
+                    cleanup_dirs.append(target_folder)
+                for d in cleanup_dirs:
+                    if not os.path.exists(d):
+                        continue
+                    for item in os.listdir(d):
+                        if item.startswith('.') and ('_custom_cover_' in item or 'write_test' in item or item == '.bemudex_temp'):
                             try:
-                                os.remove(full_path)
-                                logger.info(f"Cleaned up temporary file: {full_path}")
+                                item_path = os.path.join(d, item)
+                                if os.path.isdir(item_path):
+                                    import shutil
+                                    shutil.rmtree(item_path, ignore_errors=True)
+                                else:
+                                    os.remove(item_path)
                             except Exception:
                                 pass
+                        if item.endswith(('.webp', '.jpg', '.jpeg', '.png', '.part', '.ytdl', '.vtt', '.srt')):
+                            full_path = os.path.join(d, item)
+                            if os.path.isfile(full_path) and (current_time - os.path.getmtime(full_path) < 120):
+                                try:
+                                    os.remove(full_path)
+                                    logger.info(f"Cleaned up temporary file: {full_path}")
+                                except Exception:
+                                    pass
+                # Clean up empty playlist directory if aborted before any tracks succeeded
+                if is_playlist and target_folder != folder and os.path.exists(target_folder):
+                    remaining = [f for f in os.listdir(target_folder) if not f.startswith('.')]
+                    if not remaining:
+                        try:
+                            import shutil
+                            shutil.rmtree(target_folder, ignore_errors=True)
+                            logger.info(f"Removed empty playlist folder: {target_folder}")
+                        except Exception:
+                            pass
             except Exception as ex:
                 logger.error(f"Failed to cleanup temp files: {ex}")
                 

@@ -4,24 +4,30 @@ import os
 
 datas_list = [
     ('assets', 'assets'),
-    ('core', 'core'),
-    ('services', 'services'),
-    ('frontend/dist', 'frontend/dist')
 ]
 
 if sys.platform == 'win32' and os.path.exists('ffmpeg.exe'):
     datas_list.append(('ffmpeg.exe', '.'))
 
 a = Analysis(
-    ['app.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=datas_list,
-    hiddenimports=['mutagen', 'certifi', 'yt_dlp_ejs'],
+    hiddenimports=['mutagen', 'certifi', 'yt_dlp_ejs', 'PyQt6.QtSvg', 'PyQt6.QtNetwork'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        'webview',
+        'pywebview',
+        'PyQt6.QtWebEngineCore',
+        'PyQt6.QtWebEngineWidgets',
+        'PyQt6.QtWebEngineQuick',
+        'PyQt6.QtPdf',
+        'PyQt6.QtPdfWidgets',
+        'tkinter',
+    ],
     noarchive=False,
     optimize=0,
 )
@@ -54,4 +60,3 @@ coll = COLLECT(
     upx_exclude=[],
     name='Bemudex',
 )
-

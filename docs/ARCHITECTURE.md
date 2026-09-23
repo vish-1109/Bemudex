@@ -2,7 +2,7 @@
 
 ## Overview
 
-Bemudex is a desktop media downloader built with a Python backend (PyWebView + yt-dlp) and a React/Vite frontend. The two sides communicate exclusively through `window.pywebview.api`, which exposes the `Api` class defined in `app.py`.
+Bemudex 3.0 is a desktop media downloader built with a native PyQt6 interface on Linux, powered by yt-dlp and FFmpeg. Application components communicate through Qt signals and slots across UI views, background `QThread` workers, and service modules.
 
 ---
 
@@ -11,36 +11,46 @@ Bemudex is a desktop media downloader built with a Python backend (PyWebView + y
 ```
 Bemudex/
 │
-├── app.py                   # Application bootstrap, dependency wiring, PyWebView API
+├── main.py                  # Native Qt application bootstrap, window initialization, themes
 │
-├── core/                    # Application-wide utilities (no business logic)
-│   ├── __init__.py
+├── ui/                      # PyQt6 UI components and views
+│   ├── main_window.py       # Main application window, navigation, queue coordination
+│   ├── home_view.py         # Primary download view, URL bar, media options
+│   ├── history_view.py      # Download history view with file actions
+│   ├── settings_view.py     # Settings and diagnostics view
+│   ├── audio_options.py     # Audio format, bitrate, and metadata tagging options
+│   ├── downloads_panel.py   # Sliding right panel with active/queued downloads
+│   ├── download_card.py     # Individual download card with progress, speed, ETA
+│   ├── themes.py            # Color palette and theme definitions (Onyx Dark, etc.)
+│   └── styles.py            # Global stylesheet generator
+│
+├── workers/                 # Background QThread workers
+│   ├── download_worker.py   # Manages download execution and emits progress signals
+│   ├── metadata_worker.py   # Asynchronously fetches media/playlist info
+│   └── engine_worker.py     # Performs yt-dlp engine updates and version checks
+│
+├── services/                # Business logic services
+│   ├── config_manager.py    # Config file read/write; download folder and theme management
+│   ├── history_manager.py   # Download history load/save; file size formatting
+│   ├── clipboard_manager.py # Linux clipboard read/write
+│   ├── dependency_manager.py# FFmpeg detection; yt-dlp version check and update
+│   └── downloader.py        # Download engine: yt-dlp invocation, progress hooks, postprocessors
+│
+├── core/                    # Application-wide utilities
 │   ├── constants.py         # Shared constants: file paths, limits, URLs
 │   ├── logger.py            # Rotating file logger + URL sanitization helpers
 │   └── version.py           # Single source of truth for VERSION, BUILD, RELEASE_CHANNEL
 │
-├── services/                # Business logic services
-│   ├── __init__.py
-│   ├── config_manager.py    # Config file read/write; download folder management
-│   ├── history_manager.py   # Download history load/save; file size formatting
-│   ├── clipboard_manager.py # Linux clipboard read/write (PyQt6 / CLI fallback)
-│   ├── dependency_manager.py# FFmpeg detection; yt-dlp version check and update
-│   └── downloader.py        # Download engine: yt-dlp invocation, progress hooks, postprocessors
-│
-├── frontend/                # React/Vite frontend
-│   └── src/
-│
-├── assets/                  # Application icons and static assets
+├── assets/                  # Application icons and bundled fonts
+│   └── fonts/               # Bundled Ubuntu TrueType fonts
 │
 ├── docs/                    # Project documentation
 │   ├── ARCHITECTURE.md      # This file
-│   ├── API.md               # PyWebView API reference
+│   ├── API.md               # Historical PyWebView API reference (v2.x)
 │   └── CONTRIBUTING.md      # Developer setup and contribution guide
 │
 ├── packaging/               # Linux packaging scripts and templates
 │   └── linux/               # AppImage and Debian package builders
-│
-├── tests/                   # Test suite
 │
 ├── requirements.txt         # Python dependencies
 └── Bemudex.spec             # PyInstaller build specification
@@ -50,108 +60,93 @@ Bemudex/
 
 ## Dependency Direction
 
-Dependencies flow in one direction only:
+Dependencies flow downward:
 
 ```
-app.py
+main.py
     ↓
-services/
-    ↓
-core/
+ui/  ──→  workers/
+             ↓
+         services/
+             ↓
+           core/
 ```
 
-- `core/` never imports from `services/` or `app.py`.
-- `services/` may import from `core/` but never from `app.py`.
-- `app.py` may import from both `core/` and `services/`.
+- `core/` never imports from `services/`, `workers/`, or `ui/`.
+- `services/` may import from `core/` but never from `workers/` or `ui/`.
+- `workers/` may import from `services/` and `core/`.
+- `ui/` coordinates `workers/`, `services/`, and `core/`.
+- `main.py` bootstraps the QApplication, registers bundled fonts, applies stylesheet, and instantiates `MainWindow`.
 
 ---
 
 ## Module Responsibilities
 
-### `app.py`
-- Instantiates `Api`, `DependencyManager`, and the PyWebView window.
-- Wires all service modules together.
-- Exposes the full `window.pywebview.api` surface to the frontend.
-- Handles application lifecycle: startup, window events, on-close history flush.
-- Contains no standalone business logic beyond orchestration.
+### `main.py`
+- Instantiates `QApplication`, configures desktop environment metadata, registers bundled fonts.
+- Loads theme and UI scaling settings, applies global stylesheets.
+- Instantiates and displays `MainWindow`.
 
-### `core/constants.py`
-- Defines shared file paths (`CONFIG_FILE`, `HISTORY_FILE`), limits (`HISTORY_LIMIT`), and URLs (`YT_DLP_PYPI_URL`).
-- Pure constants — no imports from other project modules.
+### `ui/`
+- Implements the complete native desktop interface via PyQt6 widgets and custom components.
+- `MainWindow`: Coordinates sidebar navigation, title bar actions, and global download worker dispatching.
+- `HomeView`: Manages the primary search/URL input, video format selections, and audio tagging controls.
+- `DownloadsPanel` & `DownloadCard`: Displays active concurrent downloads, speed, ETA, progress bars, and retry buttons.
+- `HistoryView`: Provides interactive list of past downloads with playback and directory reveal shortcuts.
+- `SettingsView`: Manages download destinations, theme selection, rate limiting, and system diagnostics.
 
-### `core/logger.py`
-- Sets up the rotating file logger (`~/.bemudex/logs/bemudex.log`).
-- Provides `sanitize_url` and `sanitize_msg` for privacy-safe log output.
-- The only permitted module-level side effect in the project (logger initialization).
+### `workers/`
+- `DownloadWorker`: Executes downloads via `downloader.start_download`, emitting real-time signals for speed, progress, completion, and error states.
+- `MetadataWorker`: Extracts video and playlist metadata in the background to keep the UI fully responsive.
+- `EngineCheckWorker` / `EngineUpdateWorker` / `EngineRollbackWorker`: Checks PyPI for upstream yt-dlp updates, handles atomic wheel downloads and replacements, and provides automatic rollback protection.
 
-### `core/version.py`
-- Single source of truth: `VERSION`, `BUILD`, `RELEASE_CHANNEL`.
+### `core/`
+- `constants.py`: Shared file paths (`CONFIG_FILE`, `HISTORY_FILE`), limits (`HISTORY_LIMIT`), and URLs (`YT_DLP_PYPI_URL`).
+- `logger.py`: Rotating file logger (`~/.bemudex/logs/bemudex.log`) with URL and message sanitization.
+- `version.py`: Single source of truth for `VERSION`, `BUILD`, and `RELEASE_CHANNEL`.
 
-### `services/config_manager.py`
-- Owns `config_lock` (threading.Lock).
-- `load_config()` / `save_config(config)` — atomic JSON config file access with corruption recovery.
-- `load_last_folder()` / `save_last_folder(folder)` — remembers the user's last download directory.
-- `get_default_download_folder()` — platform-aware downloads directory detection.
-
-### `services/history_manager.py`
-- `load_history()` / `save_history(history)` — reads and writes the JSON history file.
-- `get_file_size_str(filepath)` — human-readable file size formatting.
-- Stateful caching (`history_cache`, `history_lock`, `save_timer`) lives on the `Api` instance in `app.py`.
-
-### `services/clipboard_manager.py`
-- `get_clipboard_text()` — multi-tier clipboard reader: PyQt6 → tkinter → platform CLI (xclip / pbpaste / PowerShell).
-- `read_clipboard()` / `copy_to_clipboard(text)` — simple PyQt6-backed read/write.
-
-### `services/dependency_manager.py`
-- `DependencyManager` class:
-  - `detect()` — finds FFmpeg (custom path → bundled → system PATH), caches result.
-  - `_probe_ffmpeg(path)` — runs `ffmpeg -version` to validate an executable.
-  - `check()` — queries PyPI for the latest yt-dlp version.
-  - `update()` — upgrades yt-dlp via `yt_dlp -U` or pip, then reloads the module.
-  - `reset()` — removes custom FFmpeg path from config, re-runs detection.
-  - `diagnostics()` — collects full system health report for the UI diagnostics panel.
-  - `versions()` — returns Bemudex and yt-dlp version info.
-
-### `services/downloader.py`
-- `get_ffmpeg_path()` — resolves FFmpeg binary: config file → bundled → system.
-- `start_download(...)` — entry point for all downloads (video, audio, playlist).
-  - Runs in a background thread.
-  - Uses `hook` (download progress) and `post_hook` (postprocessor completion) for real-time UI updates.
-  - Supports concurrent playlist downloads via `ThreadPoolExecutor(max_workers=2)`.
-  - Cleans up temporary thumbnail, part, and test files in a `finally` block.
+### `services/`
+- `config_manager.py`: Thread-safe JSON configuration management with corruption backup and recovery.
+- `history_manager.py`: Thread-safe JSON history persistence and formatted disk-size utilities.
+- `clipboard_manager.py`: Linux clipboard monitoring for automatic media link detection.
+- `dependency_manager.py`: FFmpeg validation and standalone yt-dlp engine updater.
+- `downloader.py`: Multi-threaded download execution using yt-dlp, subtitle extraction, audio conversion, and ID3/thumbnail embedding.
 
 ---
 
 ## Data Flow: URL → Completed Download
 
 ```
-User pastes URL (frontend)
+User enters URL in HomeView
         ↓
-window.pywebview.api.fetch_metadata(url)   [app.py → services/downloader.py (get_ffmpeg_path)]
+HomeView initiates MetadataWorker (QThread)
         ↓
-window.onMetadata(data)                    [JS callback, triggered from background thread]
+metadata_ready signal emitted → HomeView renders video info & audio tags
         ↓
-User selects format/quality and clicks Download
+User clicks "Download Now"
         ↓
-window.pywebview.api.start_download(...)   [app.py]
+MainWindow receives download_requested signal → validates path / file overwrite
         ↓
-services/downloader.py: start_download()   [background thread]
-    → yt-dlp.extract_info (flat, for playlist queue)
-    → window.onPlaylistMetadata(items)     [JS callback]
-    → yt-dlp.YoutubeDL.download()
-        → hook() → window.onProgress(data) [JS callback, per chunk]
-        → post_hook() → window.onProgress (finished per item)
-    → on_done() → services/history_manager: load/save
-               → window.onDownloadFinished(files, total, cancelled)
+DownloadWorker (QThread) started
+    → calls services/downloader.py: start_download()
+    → progress hooks emit progress_updated signal (live speed, percent, ETA)
+    → DownloadsPanel updates track download card in real time
+    → item completed → file saved to history via services/history_manager
+    → download_finished signal emitted
 ```
 
 ---
 
 ## Threading Model
 
-- The main thread runs the PyWebView event loop.
-- `start_download` spawns one daemon thread (`run()`), which may itself spawn `ThreadPoolExecutor` workers for playlists.
-- `fetch_metadata` spawns one daemon thread (`_fetch()`).
-- All `window.evaluate_js` calls are serialized through `self.js_lock` (threading.Lock on `Api`).
-- History writes are debounced via `threading.Timer` (0.5 s delay) and protected by `self.history_lock`.
-- Config file writes are protected by `config_lock` in `services/config_manager.py`.
+- The main thread runs the Qt event loop (`QApplication.exec()`).
+- Background tasks (`DownloadWorker`, `MetadataWorker`, `EngineWorker`) subclass `QThread`.
+- Thread-to-UI communication is mediated entirely via Qt Signals (`pyqtSignal`) and Slots (`pyqtSlot`).
+- Config file writes are serialized via `config_lock` in `services/config_manager.py`.
+- History writes are serialized via `history_lock` in `services/history_manager.py`.
+
+---
+
+## Historical Architecture (v2.x)
+
+In Bemudex 2.x, the application used a hybrid architecture combining PyWebView with a React/Vite single-page application communicating via a `window.pywebview.api` JavaScript bridge. In Bemudex 3.0, this stack was completely replaced with a native PyQt6 interface to achieve faster startup, lower memory consumption, and seamless Linux desktop integration.

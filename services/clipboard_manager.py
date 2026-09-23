@@ -15,23 +15,6 @@ def get_clipboard_text():
     except Exception as e:
         logger.error(f"PyQt6 native clipboard reading failed: {e}")
 
-    root = None
-    try:
-        import tkinter as tk
-        root = tk.Tk()
-        root.withdraw()
-        text = root.clipboard_get()
-        if isinstance(text, str):
-            return text.strip()
-    except Exception:
-        pass
-    finally:
-        if root is not None:
-            try:
-                root.destroy()
-            except Exception:
-                pass
-
     try:
         if sys.platform == "win32":
             startupinfo = subprocess.STARTUPINFO()

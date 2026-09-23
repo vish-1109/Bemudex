@@ -103,3 +103,100 @@ def save_theme(theme_name):
         save_config(config)
     except Exception as e:
         logger.error(f"Error saving theme to config: {e}")
+
+
+def load_audio_format():
+    try:
+        config = load_config()
+        fmt = config.get("audio_format", "mp3")
+        if fmt in ["mp3", "m4a", "flac", "wav", "aac"]:
+            return fmt
+    except Exception as e:
+        logger.error(f"Error loading audio format: {e}")
+    return "mp3"
+
+
+def save_audio_format(audio_fmt):
+    try:
+        config = load_config()
+        config["audio_format"] = audio_fmt
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving audio format: {e}")
+
+
+def load_ffmpeg_path():
+    try:
+        config = load_config()
+        return config.get("ffmpeg_path", "")
+    except Exception as e:
+        logger.error(f"Error loading ffmpeg path: {e}")
+    return ""
+
+
+def save_ffmpeg_path(path):
+    try:
+        config = load_config()
+        if path:
+            config["ffmpeg_path"] = path
+        else:
+            config.pop("ffmpeg_path", None)
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving ffmpeg path: {e}")
+
+
+def load_auto_close_panel() -> bool:
+    try:
+        config = load_config()
+        return bool(config.get("auto_close_panel", False))
+    except Exception as e:
+        logger.error(f"Error loading auto_close_panel from config: {e}")
+    return False
+
+
+def save_auto_close_panel(enabled: bool):
+    try:
+        config = load_config()
+        config["auto_close_panel"] = bool(enabled)
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving auto_close_panel to config: {e}")
+
+
+def load_ui_scale() -> int:
+    try:
+        config = load_config()
+        val = int(config.get("ui_scale", 100))
+        if val in [90, 100, 110, 125, 150, 175]:
+            return val
+    except Exception as e:
+        logger.error(f"Error loading ui_scale: {e}")
+    return 100
+
+
+def save_ui_scale(scale: int):
+    try:
+        config = load_config()
+        config["ui_scale"] = int(scale)
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving ui_scale: {e}")
+
+
+def load_check_updates_on_launch() -> bool:
+    try:
+        config = load_config()
+        return bool(config.get("check_updates_on_launch", True))
+    except Exception as e:
+        logger.error(f"Error loading check_updates_on_launch: {e}")
+    return True
+
+
+def save_check_updates_on_launch(enabled: bool):
+    try:
+        config = load_config()
+        config["check_updates_on_launch"] = bool(enabled)
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving check_updates_on_launch: {e}")

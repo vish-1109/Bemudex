@@ -37,15 +37,19 @@
   <screenshots>
     <screenshot type="default">
       <caption>Main download interface with video quality selection</caption>
-      <image type="source" width="1516" height="807">https://raw.githubusercontent.com/vish-1109/Bemudex/main/docs/screenshots/main_window.png</image>
+      <image type="source" width="1920" height="993">https://raw.githubusercontent.com/vish-1109/Bemudex/main/docs/screenshots/main_window.png</image>
     </screenshot>
     <screenshot>
       <caption>Audio download mode with format and bitrate selection</caption>
-      <image type="source" width="1516" height="807">https://raw.githubusercontent.com/vish-1109/Bemudex/main/docs/screenshots/audio_mode.png</image>
+      <image type="source" width="1920" height="993">https://raw.githubusercontent.com/vish-1109/Bemudex/main/docs/screenshots/audio_mode.png</image>
     </screenshot>
     <screenshot>
       <caption>Settings page showing dependencies and system health</caption>
-      <image type="source" width="1516" height="807">https://raw.githubusercontent.com/vish-1109/Bemudex/main/docs/screenshots/settings.png</image>
+      <image type="source" width="1920" height="993">https://raw.githubusercontent.com/vish-1109/Bemudex/main/docs/screenshots/settings.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Built-in theme options</caption>
+      <image type="source" width="1856" height="1284">https://raw.githubusercontent.com/vish-1109/Bemudex/main/docs/screenshots/themes.png</image>
     </screenshot>
   </screenshots>
 
@@ -81,6 +85,11 @@
   </keywords>
 
   <releases>
+    <release version="3.0.0" date="2026-09-22">
+      <description>
+        <p>Migrated user interface to native Qt desktop architecture, added individual track cards for playlist downloads with concurrent execution and track retry, custom audio bitrate selection, subtitle embedding, and multiple themes.</p>
+      </description>
+    </release>
     <release version="2.0.3" date="2026-08-19">
       <description>
         <p>Fixed YouTube 403 Forbidden stream error by updating extractor client headers (Mobile Web &amp; iOS), added live window and taskbar application icons, and improved Open Folder file manager responsiveness.</p>
