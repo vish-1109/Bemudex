@@ -85,6 +85,11 @@
   </keywords>
 
   <releases>
+    <release version="3.0.1" date="2026-11-10">
+      <description>
+        <p>Zero-wait instant downloads with real-time multi-threaded speed tracking, native OS desktop notifications, YouTube bot-check and sign-in helper with one-click cookie configuration, Seal-grade enhancements (Auto-Dub prevention, Universal SRT subtitles), Nightly/Stable engine channels, SponsorBlock integration, 1:1 square artwork cropping, and universal glibc 2.35 AppImage packaging.</p>
+      </description>
+    </release>
     <release version="3.0.0" date="2026-09-22">
       <description>
         <p>Migrated user interface to native Qt desktop architecture, added individual track cards for playlist downloads with concurrent execution and track retry, custom audio bitrate selection, subtitle embedding, and multiple themes.</p>

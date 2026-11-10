@@ -15,7 +15,10 @@ class DownloadWorker(QThread):
     def __init__(self, download_id: str, url: str, folder: str, download_type: str, quality: str,
                  audio_format: str = 'mp3', custom_title: str = None, custom_artist: str = None,
                  embed_thumbnail: bool = True, embed_tags: bool = True, embed_chapters: bool = True,
-                 embed_subtitles: bool = False, playlist_index: int = None):
+                 embed_subtitles: bool = False, playlist_index: int = None, is_playlist: bool = None,
+                 crop_artwork: bool = True, sponsorblock: bool = False,
+                 compatibility_mode: bool = False, subtitles_langs: str = 'en, en-US, en-GB',
+                 auto_subtitles: bool = True):
         super().__init__()
         self.download_id = download_id
         self.url = url.strip()
@@ -30,9 +33,16 @@ class DownloadWorker(QThread):
         self.embed_chapters = embed_chapters
         self.embed_subtitles = embed_subtitles
         self.playlist_index = playlist_index
+        self.is_playlist_flag = is_playlist
+        self.crop_artwork = crop_artwork
+        self.sponsorblock = sponsorblock
+        self.compatibility_mode = compatibility_mode
+        self.subtitles_langs = subtitles_langs
+        self.auto_subtitles = auto_subtitles
+        self.last_error = ""
         self.stop_event = threading.Event()
         self._done_event = threading.Event()
-        self.is_playlist = False
+        self.is_playlist = bool(is_playlist)
 
     def cancel(self):
         """Signals the downloader to cleanly stop downloading."""
@@ -40,10 +50,14 @@ class DownloadWorker(QThread):
 
     def run(self):
         def _on_progress(data):
+            if data.get('status') == 'failed':
+                self.last_error = str(data.get('sizeInfo', ''))
             item_id = data.get('id') if self.is_playlist and data.get('id') else self.download_id
             self.progress.emit(item_id, data)
 
         def _on_log(msg):
+            if 'error' in msg.lower() or 'bot' in msg.lower():
+                self.last_error = msg
             self.log_msg.emit(self.download_id, msg)
 
         def _on_playlist_metadata(items, target_folder="", is_playlist=True):
@@ -74,7 +88,13 @@ class DownloadWorker(QThread):
                 embed_tags=self.embed_tags,
                 embed_chapters=self.embed_chapters,
                 embed_subtitles=self.embed_subtitles,
-                playlist_index=self.playlist_index
+                playlist_index=self.playlist_index,
+                is_playlist=self.is_playlist_flag,
+                crop_artwork=self.crop_artwork,
+                sponsorblock=self.sponsorblock,
+                compatibility_mode=self.compatibility_mode,
+                subtitles_langs=self.subtitles_langs,
+                auto_subtitles=self.auto_subtitles
             )
             # Block until start_download's daemon thread completes and triggers on_done
             self._done_event.wait()

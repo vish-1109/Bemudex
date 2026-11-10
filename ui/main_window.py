@@ -12,8 +12,12 @@ from core.constants import HISTORY_LIMIT
 from core.logger import logger
 from services.history_manager import load_history, save_history, get_file_size_str
 from services.dependency_manager import DependencyManager
+from services.notification_service import send_desktop_notification
+from services.auth_helper import is_bot_or_auth_error
 from services.config_manager import (
-    load_theme, load_auto_close_panel, load_ui_scale, load_check_updates_on_launch
+    load_theme, load_auto_close_panel, load_ui_scale, load_check_updates_on_launch,
+    load_crop_artwork, load_sponsorblock_enabled, load_compatibility_mode,
+    load_subtitle_languages, load_auto_subtitles
 )
 from ui.sidebar import Sidebar
 from ui.home_view import HomeView
@@ -162,9 +166,13 @@ class MainWindow(QMainWindow):
         self.home_view.folder_changed.connect(self.settings_view.update_folder)
         self.home_view.download_requested.connect(self._on_download_requested)
         self.home_view.cancel_requested.connect(self._on_home_cancel_requested)
+        self.home_view.cookies_config_requested.connect(self.navigate_to_cookies)
 
         # Settings view events
-        self.settings_view.folder_changed.connect(self._on_settings_folder_changed)
+        self.settings_view.video_folder_changed.connect(self.home_view.set_video_folder)
+        self.settings_view.audio_folder_changed.connect(self.home_view.set_audio_folder)
+        self.settings_view.video_folder_changed.connect(self.sidebar.update_storage)
+        self.settings_view.audio_folder_changed.connect(self.sidebar.update_storage)
         self.settings_view.audio_format_changed.connect(self.home_view.set_default_audio_format)
         self.settings_view.theme_changed.connect(self.apply_theme)
         self.settings_view.ui_scale_changed.connect(self.apply_ui_scale)
@@ -269,9 +277,14 @@ class MainWindow(QMainWindow):
             self.settings_view.refresh_all()
             self.stack.setCurrentIndex(2)
 
+    @pyqtSlot()
+    def navigate_to_cookies(self):
+        self.sidebar.set_active_page("settings")
+        self._on_page_changed("settings")
+        QTimer.singleShot(120, self.settings_view.scroll_to_cookies)
+
     @pyqtSlot(str)
     def _on_settings_folder_changed(self, folder: str):
-        self.home_view.set_active_folder(folder)
         self.sidebar.update_storage(folder)
 
     def _check_file_exists(self, folder: str, title: str, dl_type: str, audio_fmt: str) -> tuple[bool, str]:
@@ -360,6 +373,12 @@ class MainWindow(QMainWindow):
 
         worker_quality = self.current_payload.get('audio_bitrate', self.current_payload.get('quality', '320')) if self.current_payload.get('type') == 'audio' else self.current_payload.get('quality', 'best')
 
+        crop_art = self.current_payload.get('crop_artwork', load_crop_artwork())
+        sb_enabled = self.current_payload.get('sponsorblock', load_sponsorblock_enabled())
+        compat_mode = self.current_payload.get('compatibility_mode', load_compatibility_mode())
+        sub_langs = self.current_payload.get('subtitle_languages', load_subtitle_languages())
+        auto_subs = self.current_payload.get('auto_subtitles', load_auto_subtitles())
+
         self.current_worker = DownloadWorker(
             download_id=dl_id,
             url=self.current_payload['url'],
@@ -373,7 +392,13 @@ class MainWindow(QMainWindow):
             embed_tags=self.current_payload.get('write_id3', True),
             embed_chapters=self.current_payload.get('embed_chapters', True),
             embed_subtitles=self.current_payload.get('embed_subtitles', False),
-            playlist_index=self.current_payload.get('playlist_index')
+            playlist_index=self.current_payload.get('playlist_index'),
+            is_playlist=self.current_payload.get('is_playlist'),
+            crop_artwork=crop_art,
+            sponsorblock=sb_enabled,
+            compatibility_mode=compat_mode,
+            subtitles_langs=sub_langs,
+            auto_subtitles=auto_subs
         )
         self.current_worker.progress.connect(self._on_download_progress)
         self.current_worker.finished.connect(self._on_download_finished)
@@ -473,6 +498,8 @@ class MainWindow(QMainWindow):
             eta = data.get('eta', '0:00')
             title = data.get('title', '')
             if title and title != 'Extracting video info...':
+                if self.current_payload and self.current_payload.get('title') == 'Media Download':
+                    self.current_payload['title'] = title
                 self.home_view.set_status(f"Downloading: {title} — {pct:.1f}% ({speed})")
             else:
                 self.home_view.set_status(f"Downloading: {pct:.1f}% ({speed}, ETA {eta})")
@@ -488,7 +515,10 @@ class MainWindow(QMainWindow):
         if dl_id in self.downloads_panel.cards:
             self.downloads_panel.set_download_finished(dl_id, files, was_cancelled, total_count=total_count)
 
-        finished_title = self.current_payload.get('title', 'Media') if self.current_payload else 'Media'
+        card = self.downloads_panel.cards.get(dl_id)
+        card_title = card.title_text if (card and card.title_text != 'Media Download') else None
+        file_title = os.path.splitext(os.path.basename(files[0]))[0] if files else None
+        finished_title = card_title or file_title or (self.current_payload.get('title') if self.current_payload else 'Media')
 
         if was_cancelled:
             self.home_view.set_status(f"Cancelled download: {finished_title}")
@@ -500,6 +530,11 @@ class MainWindow(QMainWindow):
             else:
                 self.home_view.set_status(f"✓ Download completed: {finished_title}")
                 self.show_toast("Download completed", "success")
+
+            # Native OS desktop notification if window is minimized or behind other apps
+            if self.isMinimized() or not self.isActiveWindow():
+                send_desktop_notification("Download Complete", finished_title)
+
             # Record in history file
             try:
                 history = load_history()
@@ -522,7 +557,16 @@ class MainWindow(QMainWindow):
             self.sidebar.update_storage(self.home_view.active_folder)
         else:
             self.home_view.set_status(f"❌ Download failed: {finished_title}")
-            self.show_toast("Download failed. Click Retry in Downloads panel.", "error")
+            last_err = getattr(self.current_worker, 'last_error', '') if self.current_worker else ''
+            if is_bot_or_auth_error(last_err):
+                self.home_view.show_bot_helper()
+                self.show_toast("YouTube sign-in required. Configure cookies in Settings.", "warning")
+                if self.isMinimized() or not self.isActiveWindow():
+                    send_desktop_notification("Download Paused: Sign-in Required", f"{finished_title} - connect cookies in Settings")
+            else:
+                self.show_toast("Download failed. Click Retry in Downloads panel.", "error")
+                if self.isMinimized() or not self.isActiveWindow():
+                    send_desktop_notification("Download Failed", finished_title)
 
         # Reset active worker and process next queued item
         self.current_worker = None

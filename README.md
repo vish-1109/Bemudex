@@ -5,7 +5,7 @@
 ![Platform](https://img.shields.io/badge/platform-Linux-blue)
 ![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![License](https://img.shields.io/badge/license-GPL--3.0-green.svg)
-![Version](https://img.shields.io/badge/version-v3.0.0-orange.svg)
+![Version](https://img.shields.io/badge/version-v3.0.1-orange.svg)
 
 **A modern desktop media downloader powered by yt-dlp and FFmpeg, featuring audio/video conversions, metadata tagging, and a self-updating engine.**
 

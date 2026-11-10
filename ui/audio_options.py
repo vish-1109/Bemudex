@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
 from ui.icon_provider import get_pixmap
 from ui.quality_card import QualityCard
 from ui.switch import Switch
-from services.config_manager import save_last_folder, load_theme
+from services.config_manager import save_audio_folder, load_audio_folder, load_theme
 from ui.themes import get_theme
 
 
@@ -47,7 +47,7 @@ class AudioOptionsWidget(QWidget):
         super().__init__(parent)
         self.active_format = "mp3"
         self.active_bitrate = "320"
-        self.active_folder = initial_folder or os.path.join(os.path.expanduser("~"), "Downloads")
+        self.active_folder = initial_folder or load_audio_folder()
         self.format_cards = {}
         self.bitrate_cards = {}
         current_theme = get_theme(load_theme())
@@ -311,15 +311,19 @@ class AudioOptionsWidget(QWidget):
             c.set_active(k == br, self.accent_color, self.accent_text_color)
 
     def set_folder(self, folder: str):
-        if folder and os.path.exists(folder):
+        if folder:
             self.active_folder = folder
             self.lbl_folder_path.setText(folder)
 
     def _on_browse_clicked(self):
-        chosen = QFileDialog.getExistingDirectory(self, "Select Download Directory", self.active_folder)
+        chosen = QFileDialog.getExistingDirectory(self, "Select Audio Download Directory", self.active_folder)
         if chosen:
+            try:
+                os.makedirs(chosen, exist_ok=True)
+            except Exception:
+                pass
             self.set_folder(chosen)
-            save_last_folder(chosen)
+            save_audio_folder(chosen)
             self.folder_changed.emit(chosen)
 
     def set_metadata(self, title: str, artist: str, pixmap: QPixmap = None, has_chapters: bool = False):

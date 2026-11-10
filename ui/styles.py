@@ -117,12 +117,11 @@ QLabel#lblComingSoon {{
 }}
 
 QLabel#sidebarBadge {{
-    background-color: {t.badge_bg};
+    background: transparent;
     color: {t.badge_text};
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 600;
-    border-radius: 9px;
-    padding: 2px 7px;
+    padding: 0 4px;
 }}
 
 QFrame#sidebarFooter {{
@@ -325,11 +324,10 @@ QLabel#durationBadge {{
 }}
 
 QLabel#metaTitle {{
-    font-size: 16px;
+    font-size: 15.5px;
     font-weight: 700;
     color: {t.text_primary};
     letter-spacing: -0.2px;
-    line-height: 1.35;
 }}
 
 QLabel#metaChannel {{
@@ -872,6 +870,38 @@ QLabel#statusNotice {{
     color: {t.text_secondary};
     font-size: 12px;
     padding: 8px 12px;
+}}
+
+/* ── Bot-Check / Auth Helper Banner ── */
+QFrame#botHelperCard {{
+    background-color: rgba(234, 179, 8, 0.09);
+    border: 1px solid rgba(234, 179, 8, 0.32);
+    border-radius: 9px;
+}}
+
+QLabel#botHelperTitle {{
+    font-size: 13px;
+    font-weight: 700;
+    color: #facc15;
+}}
+
+QLabel#botHelperDesc {{
+    font-size: 11.5px;
+    color: {t.text_secondary};
+}}
+
+QPushButton#btnBotHelperAction {{
+    background-color: #eab308;
+    color: #0b0f17;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 7px 14px;
+    border: none;
+}}
+
+QPushButton#btnBotHelperAction:hover {{
+    background-color: #facc15;
 }}
 
 /* ── History View ── */

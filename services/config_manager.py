@@ -67,24 +67,62 @@ def save_config(config):
             logger.error(f"Failed to save config: {e}")
 
 
-def load_last_folder():
+def get_default_video_folder() -> str:
+    base = get_default_download_folder()
+    return os.path.join(base, "Bemudex", "Videos")
+
+
+def get_default_audio_folder() -> str:
+    base = get_default_download_folder()
+    return os.path.join(base, "Bemudex", "Audio")
+
+
+def load_video_folder() -> str:
     try:
         config = load_config()
-        folder = config.get("last_folder", "")
-        if folder and os.path.exists(folder):
+        folder = config.get("video_folder", "")
+        if folder:
             return folder
     except Exception as e:
-        logger.error(f"Error loading last folder: {e}")
-    return get_default_download_folder()
+        logger.error(f"Error loading video folder: {e}")
+    return get_default_video_folder()
+
+
+def save_video_folder(folder: str):
+    try:
+        config = load_config()
+        config["video_folder"] = folder
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving video folder: {e}")
+
+
+def load_audio_folder() -> str:
+    try:
+        config = load_config()
+        folder = config.get("audio_folder", "")
+        if folder:
+            return folder
+    except Exception as e:
+        logger.error(f"Error loading audio folder: {e}")
+    return get_default_audio_folder()
+
+
+def save_audio_folder(folder: str):
+    try:
+        config = load_config()
+        config["audio_folder"] = folder
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving audio folder: {e}")
+
+
+def load_last_folder():
+    return load_video_folder()
 
 
 def save_last_folder(folder):
-    try:
-        config = load_config()
-        config["last_folder"] = folder
-        save_config(config)
-    except Exception as e:
-        logger.error(f"Error saving last folder: {e}")
+    save_video_folder(folder)
 
 
 def load_theme():
@@ -200,3 +238,176 @@ def save_check_updates_on_launch(enabled: bool):
         save_config(config)
     except Exception as e:
         logger.error(f"Error saving check_updates_on_launch: {e}")
+
+
+def load_cookies_source() -> str:
+    try:
+        config = load_config()
+        src = config.get("cookies_source", "none")
+        if src in ["none", "firefox", "chrome", "brave", "chromium", "edge", "file"]:
+            return src
+    except Exception as e:
+        logger.error(f"Error loading cookies_source: {e}")
+    return "none"
+
+
+def save_cookies_source(source: str):
+    try:
+        config = load_config()
+        config["cookies_source"] = str(source)
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving cookies_source: {e}")
+
+
+def load_cookies_file() -> str:
+    try:
+        config = load_config()
+        return str(config.get("cookies_file", ""))
+    except Exception as e:
+        logger.error(f"Error loading cookies_file: {e}")
+    return ""
+
+
+def save_cookies_file(file_path: str):
+    try:
+        config = load_config()
+        config["cookies_file"] = str(file_path)
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving cookies_file: {e}")
+
+
+def load_crop_artwork() -> bool:
+    try:
+        config = load_config()
+        return bool(config.get("crop_artwork", True))
+    except Exception as e:
+        logger.error(f"Error loading crop_artwork: {e}")
+    return True
+
+
+def save_crop_artwork(enabled: bool):
+    try:
+        config = load_config()
+        config["crop_artwork"] = bool(enabled)
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving crop_artwork: {e}")
+
+
+def load_sponsorblock_enabled() -> bool:
+    try:
+        config = load_config()
+        return bool(config.get("sponsorblock_enabled", False))
+    except Exception as e:
+        logger.error(f"Error loading sponsorblock_enabled: {e}")
+    return False
+
+
+def save_sponsorblock_enabled(enabled: bool):
+    try:
+        config = load_config()
+        config["sponsorblock_enabled"] = bool(enabled)
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving sponsorblock_enabled: {e}")
+
+
+def load_compatibility_mode() -> bool:
+    try:
+        config = load_config()
+        return bool(config.get("compatibility_mode", False))
+    except Exception as e:
+        logger.error(f"Error loading compatibility_mode: {e}")
+    return False
+
+
+def save_compatibility_mode(enabled: bool):
+    try:
+        config = load_config()
+        config["compatibility_mode"] = bool(enabled)
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving compatibility_mode: {e}")
+
+
+def load_subtitle_languages() -> str:
+    try:
+        config = load_config()
+        return str(config.get("subtitle_languages", "en, en-US, en-GB"))
+    except Exception as e:
+        logger.error(f"Error loading subtitle_languages: {e}")
+    return "en, en-US, en-GB"
+
+
+def save_subtitle_languages(langs: str):
+    try:
+        config = load_config()
+        config["subtitle_languages"] = str(langs).strip()
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving subtitle_languages: {e}")
+
+
+def load_auto_subtitles() -> bool:
+    try:
+        config = load_config()
+        return bool(config.get("auto_subtitles", True))
+    except Exception as e:
+        logger.error(f"Error loading auto_subtitles: {e}")
+    return True
+
+
+def save_auto_subtitles(enabled: bool):
+    try:
+        config = load_config()
+        config["auto_subtitles"] = bool(enabled)
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving auto_subtitles: {e}")
+
+
+def load_engine_channel() -> str:
+    try:
+        config = load_config()
+        ch = config.get("engine_channel", "nightly")
+        if ch in ["stable", "nightly"]:
+            return ch
+    except Exception as e:
+        logger.error(f"Error loading engine_channel: {e}")
+    return "nightly"
+
+
+def save_engine_channel(channel: str):
+    try:
+        config = load_config()
+        config["engine_channel"] = str(channel).lower()
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving engine_channel: {e}")
+
+
+def load_desktop_notifications() -> bool:
+    try:
+        config = load_config()
+        return bool(config.get("desktop_notifications", True))
+    except Exception as e:
+        logger.error(f"Error loading desktop_notifications: {e}")
+        return True
+
+
+def save_desktop_notifications(enabled: bool):
+    try:
+        config = load_config()
+        config["desktop_notifications"] = bool(enabled)
+        save_config(config)
+    except Exception as e:
+        logger.error(f"Error saving desktop_notifications: {e}")
+
+
+
+
+
+
+

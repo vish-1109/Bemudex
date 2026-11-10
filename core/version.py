@@ -1,3 +1,3 @@
-VERSION = "v3.0.0"
-BUILD = "2026.09.22"
+VERSION = "v3.0.1"
+BUILD = "2026.11.10"
 RELEASE_CHANNEL = "stable"

@@ -25,7 +25,7 @@ from core.constants import (
     YT_DLP_ENGINE_BACKUP_DIR,
     YT_DLP_ENGINE_STAGE_DIR
 )
-from services.config_manager import load_config, save_config
+from services.config_manager import load_config, save_config, load_engine_channel
 
 
 def normalize_version(ver_str):
@@ -127,7 +127,8 @@ class DependencyManager:
         return None
 
     def check(self):
-        logger.info("Checking for yt-dlp updates...")
+        channel = load_engine_channel()
+        logger.info(f"Checking for yt-dlp updates ({channel} channel)...")
         try:
             # We treat this request directly as the connectivity check
             req = urllib.request.Request(
@@ -138,21 +139,39 @@ class DependencyManager:
                 data = json.loads(response.read().decode())
                 releases = data.get("releases", {})
                 if releases:
-                    sorted_versions = sorted(releases.keys(), key=normalize_version)
-                    latest_version = sorted_versions[-1]
+                    if channel == "stable":
+                        stable_releases = [v for v in releases.keys() if 'dev' not in v.lower()]
+                        if stable_releases:
+                            sorted_versions = sorted(stable_releases, key=normalize_version)
+                            latest_version = sorted_versions[-1]
+                        else:
+                            latest_version = data.get("info", {}).get("version")
+                    else:
+                        sorted_versions = sorted(releases.keys(), key=normalize_version)
+                        latest_version = sorted_versions[-1]
                 else:
                     latest_version = data["info"]["version"]
 
             installed_version = self.versions()["ytdlp"]["version"]
             installed_norm = normalize_version(installed_version)
             latest_norm = normalize_version(latest_version)
-            update_available = installed_norm < latest_norm
-            logger.info(f"yt-dlp version check: installed={installed_version} ({installed_norm}), latest={latest_version} ({latest_norm}), update_available={update_available}")
+
+            is_installed_dev = 'dev' in installed_version.lower() or len(installed_norm) > 3
+
+            if channel == "stable" and is_installed_dev:
+                update_available = installed_norm != latest_norm
+            elif channel == "nightly" and not is_installed_dev:
+                update_available = installed_norm != latest_norm
+            else:
+                update_available = installed_norm < latest_norm
+
+            logger.info(f"yt-dlp version check ({channel} channel): installed={installed_version} ({installed_norm}), latest={latest_version} ({latest_norm}), update_available={update_available}")
             return {
                 "status": "success",
                 "installed": installed_version,
                 "latest": latest_version,
-                "update_available": update_available
+                "update_available": update_available,
+                "channel": channel
             }
         except urllib.error.URLError as e:
             logger.warning(f"yt-dlp update check unreachable (URLError): {e}")
@@ -168,13 +187,16 @@ class DependencyManager:
             }
 
     def update(self):
-        logger.info("Starting yt-dlp update process...")
-        try:
-            import yt_dlp
-            current_version = yt_dlp.version.__version__
-        except Exception as e:
-            logger.error(f"Could not check currently loaded yt-dlp version: {e}")
-            current_version = "Unknown"
+        channel = load_engine_channel()
+        logger.info(f"Starting yt-dlp update process ({channel} channel)...")
+        current_version = self.versions()["ytdlp"]["version"]
+        if current_version == "Unknown":
+            try:
+                import yt_dlp
+                current_version = yt_dlp.version.__version__
+            except Exception as e:
+                logger.error(f"Could not check currently loaded yt-dlp version: {e}")
+                current_version = "Unknown"
 
         latest_version = None
         wheel_url = None
@@ -187,8 +209,17 @@ class DependencyManager:
                 data = json.loads(response.read().decode())
                 releases = data.get("releases", {})
                 if releases:
-                    sorted_versions = sorted(releases.keys(), key=normalize_version)
-                    latest_version = sorted_versions[-1]
+                    if channel == "stable":
+                        stable_releases = [v for v in releases.keys() if 'dev' not in v.lower()]
+                        if stable_releases:
+                            sorted_versions = sorted(stable_releases, key=normalize_version)
+                            latest_version = sorted_versions[-1]
+                        else:
+                            latest_version = data.get("info", {}).get("version")
+                    else:
+                        sorted_versions = sorted(releases.keys(), key=normalize_version)
+                        latest_version = sorted_versions[-1]
+
                     for item in releases.get(latest_version, []):
                         if item.get("packagetype") == "bdist_wheel":
                             wheel_url = item.get("url")
@@ -214,7 +245,29 @@ class DependencyManager:
 
         # Compare currently active version against latest version
         if current_version != "Unknown":
-            if normalize_version(current_version) >= normalize_version(latest_version):
+            current_norm = normalize_version(current_version)
+            latest_norm = normalize_version(latest_version)
+            is_current_dev = 'dev' in current_version.lower() or len(current_norm) > 3
+
+            if channel == "stable" and is_current_dev:
+                # Switching from Nightly to Stable: user requested stable release
+                if current_norm == latest_norm:
+                    logger.info(f"yt-dlp is already running target stable release ({current_version})")
+                    return {
+                        "status": "up_to_date",
+                        "message": f"yt-dlp is already up to date on Stable channel (version {current_version}).",
+                        "version": current_version
+                    }
+            elif channel == "nightly" and not is_current_dev:
+                # Switching from Stable to Nightly: user requested nightly release
+                if current_norm == latest_norm:
+                    logger.info(f"yt-dlp is already running target nightly release ({current_version})")
+                    return {
+                        "status": "up_to_date",
+                        "message": f"yt-dlp is already up to date on Nightly channel (version {current_version}).",
+                        "version": current_version
+                    }
+            elif current_norm >= latest_norm:
                 logger.info(f"yt-dlp is already up to date (current={current_version}, latest={latest_version})")
                 return {
                     "status": "up_to_date",

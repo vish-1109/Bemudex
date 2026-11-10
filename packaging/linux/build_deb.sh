@@ -4,35 +4,37 @@ set -e
 # Go to repository root
 CDPATH= cd "$(dirname "$0")/../.."
 
-echo "🔍 Validating venv dependencies against requirements.txt..."
-if [ -d "venv" ]; then
-    PYTHON_BIN="./venv/bin/python"
-else
-    PYTHON_BIN="python3"
-fi
-MISSING=0
-while IFS= read -r pkg || [ -n "$pkg" ]; do
-    [[ -z "$pkg" || "$pkg" == \#* ]] && continue
-    pkg_clean=$(echo "$pkg" | sed 's/[>=<!].*//' | tr -d '[:space:]')
-    if ! $PYTHON_BIN -c "import importlib.metadata; importlib.metadata.version('$pkg_clean')" 2>/dev/null; then
-        echo "❌ Missing dependency: $pkg_clean"
-        MISSING=1
+if [ "$1" != "--skip-build" ]; then
+    echo "🔍 Validating venv dependencies against requirements.txt..."
+    if [ -d "venv" ]; then
+        PYTHON_BIN="./venv/bin/python"
+    else
+        PYTHON_BIN="python3"
     fi
-done < requirements.txt
-if [ "$MISSING" -eq 1 ]; then
-    echo ""
-    echo "🚨 Build aborted: one or more packages in requirements.txt are not installed in the venv."
-    echo "   Run: ./venv/bin/pip install -r requirements.txt"
-    exit 1
-fi
-echo "✅ All dependencies verified."
+    MISSING=0
+    while IFS= read -r pkg || [ -n "$pkg" ]; do
+        [[ -z "$pkg" || "$pkg" == \#* ]] && continue
+        pkg_clean=$(echo "$pkg" | sed 's/[>=<!].*//' | tr -d '[:space:]')
+        if ! $PYTHON_BIN -c "import importlib.metadata; importlib.metadata.version('$pkg_clean')" 2>/dev/null; then
+            echo "❌ Missing dependency: $pkg_clean"
+            MISSING=1
+        fi
+    done < requirements.txt
+    if [ "$MISSING" -eq 1 ]; then
+        echo ""
+        echo "🚨 Build aborted: one or more packages in requirements.txt are not installed in the venv."
+        echo "   Run: ./venv/bin/pip install -r requirements.txt"
+        exit 1
+    fi
+    echo "✅ All dependencies verified."
 
-echo "🐍 Compiling PyInstaller backend..."
-# Use venv python if available
-if [ -d "venv" ]; then
-    ./venv/bin/pyinstaller --noconfirm Bemudex.spec
-else
-    pyinstaller --noconfirm Bemudex.spec
+    echo "🐍 Compiling PyInstaller backend..."
+    # Use venv python if available
+    if [ -d "venv" ]; then
+        ./venv/bin/pyinstaller --noconfirm Bemudex.spec
+    else
+        pyinstaller --noconfirm Bemudex.spec
+    fi
 fi
 
 echo "📂 Creating Debian package directory structure..."

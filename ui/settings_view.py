@@ -9,13 +9,23 @@ from PyQt6.QtWidgets import (
 from core.version import VERSION, BUILD, RELEASE_CHANNEL
 from core.constants import YT_DLP_ENGINE_DIR
 from services.config_manager import (
-    load_last_folder, save_last_folder, get_default_download_folder,
+    load_video_folder, save_video_folder, get_default_video_folder,
+    load_audio_folder, save_audio_folder, get_default_audio_folder,
     load_audio_format, save_audio_format,
     load_ffmpeg_path, save_ffmpeg_path,
     load_theme, save_theme,
     load_auto_close_panel, save_auto_close_panel,
     load_ui_scale, save_ui_scale,
-    load_check_updates_on_launch, save_check_updates_on_launch
+    load_check_updates_on_launch, save_check_updates_on_launch,
+    load_cookies_source, save_cookies_source,
+    load_cookies_file, save_cookies_file,
+    load_crop_artwork, save_crop_artwork,
+    load_sponsorblock_enabled, save_sponsorblock_enabled,
+    load_compatibility_mode, save_compatibility_mode,
+    load_subtitle_languages, save_subtitle_languages,
+    load_auto_subtitles, save_auto_subtitles,
+    load_engine_channel, save_engine_channel,
+    load_desktop_notifications, save_desktop_notifications
 )
 from core.logger import logger
 from services.dependency_manager import DependencyManager
@@ -28,6 +38,8 @@ from workers.engine_worker import EngineCheckWorker, EngineUpdateWorker, EngineR
 
 class SettingsView(QWidget):
     """Native Settings screen for Bemudex 3.0."""
+    video_folder_changed = pyqtSignal(str)
+    audio_folder_changed = pyqtSignal(str)
     folder_changed = pyqtSignal(str)
     audio_format_changed = pyqtSignal(str)
     theme_changed = pyqtSignal(str)
@@ -67,12 +79,12 @@ class SettingsView(QWidget):
         root_layout.addLayout(header_layout)
 
         # 2. Scroll Area
-        scroll = QScrollArea()
-        scroll.setObjectName("settingsScrollArea")
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setMinimumWidth(300)
+        self.scroll = QScrollArea()
+        self.scroll.setObjectName("settingsScrollArea")
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll.setMinimumWidth(300)
 
         scroll_content = QWidget()
         scroll_content.setObjectName("scrollContent")
@@ -86,7 +98,13 @@ class SettingsView(QWidget):
         # Card 2: Download Preferences
         self._build_preferences_card()
 
-        # Card 3: yt-dlp Engine
+        # Card 3: Download & Playback Enhancements
+        self._build_enhancements_card()
+
+        # Card 4: Authentication & Cookies
+        self._build_cookies_card()
+
+        # Card 4: yt-dlp Engine
         self._build_engine_card()
 
         # Card 4: Troubleshooting
@@ -96,8 +114,8 @@ class SettingsView(QWidget):
         self._build_about_card()
 
         self.content_layout.addStretch()
-        scroll.setWidget(scroll_content)
-        root_layout.addWidget(scroll, 1)
+        self.scroll.setWidget(scroll_content)
+        root_layout.addWidget(self.scroll, 1)
 
     # ── Section 1: Appearance & Theme ──
     def _build_appearance_card(self):
@@ -201,46 +219,92 @@ class SettingsView(QWidget):
         lbl_section.setObjectName("settingsSectionTitle")
         layout.addWidget(lbl_section)
 
-        # 1. Default Download Directory
-        row_dir = QVBoxLayout()
-        row_dir.setSpacing(6)
-        lbl_dir_title = QLabel("Default Download Location")
-        lbl_dir_title.setObjectName("settingsItemTitle")
-        row_dir.addWidget(lbl_dir_title)
+        # 1. Video Download Location
+        row_vid_dir = QVBoxLayout()
+        row_vid_dir.setSpacing(6)
+        lbl_vid_title = QLabel("Video Download Location")
+        lbl_vid_title.setObjectName("settingsItemTitle")
+        row_vid_dir.addWidget(lbl_vid_title)
 
-        lbl_dir_desc = QLabel("Downloaded media files will be saved here automatically.")
-        lbl_dir_desc.setObjectName("settingsItemDesc")
-        lbl_dir_desc.setWordWrap(True)
-        row_dir.addWidget(lbl_dir_desc)
+        lbl_vid_desc = QLabel("Downloaded video files will be saved here automatically (default: ~/Downloads/Bemudex/Videos).")
+        lbl_vid_desc.setObjectName("settingsItemDesc")
+        lbl_vid_desc.setWordWrap(True)
+        row_vid_dir.addWidget(lbl_vid_desc)
 
-        row_dir.addSpacing(4)
+        row_vid_dir.addSpacing(4)
 
-        self.input_folder = QLineEdit()
-        self.input_folder.setObjectName("settingsPathInput")
-        self.input_folder.setFixedHeight(38)
-        self.input_folder.setReadOnly(True)
-        row_dir.addWidget(self.input_folder)
+        self.input_video_folder = QLineEdit()
+        self.input_video_folder.setObjectName("settingsPathInput")
+        self.input_video_folder.setFixedHeight(38)
+        self.input_video_folder.setReadOnly(True)
+        row_vid_dir.addWidget(self.input_video_folder)
+        self.input_folder = self.input_video_folder  # alias for backward compatibility
 
-        row_dir.addSpacing(6)
+        row_vid_dir.addSpacing(6)
 
-        dir_btn_row = QHBoxLayout()
-        dir_btn_row.setSpacing(10)
-        btn_browse_folder = QPushButton("Browse Folder...")
-        btn_browse_folder.setObjectName("btnSettingsAction")
-        btn_browse_folder.setFixedHeight(36)
-        btn_browse_folder.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_browse_folder.clicked.connect(self._on_browse_folder_clicked)
-        dir_btn_row.addWidget(btn_browse_folder)
+        vid_btn_row = QHBoxLayout()
+        vid_btn_row.setSpacing(10)
+        btn_browse_vid = QPushButton("Browse Video Folder...")
+        btn_browse_vid.setObjectName("btnSettingsAction")
+        btn_browse_vid.setFixedHeight(36)
+        btn_browse_vid.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_browse_vid.clicked.connect(self._on_browse_video_folder_clicked)
+        vid_btn_row.addWidget(btn_browse_vid)
 
-        btn_default_folder = QPushButton("Reset to Default")
-        btn_default_folder.setObjectName("btnSettingsAction")
-        btn_default_folder.setFixedHeight(36)
-        btn_default_folder.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_default_folder.clicked.connect(self._on_reset_folder_clicked)
-        dir_btn_row.addWidget(btn_default_folder)
-        dir_btn_row.addStretch()
-        row_dir.addLayout(dir_btn_row)
-        layout.addLayout(row_dir)
+        btn_default_vid = QPushButton("Reset to Default")
+        btn_default_vid.setObjectName("btnSettingsAction")
+        btn_default_vid.setFixedHeight(36)
+        btn_default_vid.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_default_vid.clicked.connect(self._on_reset_video_folder_clicked)
+        vid_btn_row.addWidget(btn_default_vid)
+        vid_btn_row.addStretch()
+        row_vid_dir.addLayout(vid_btn_row)
+        layout.addLayout(row_vid_dir)
+
+        layout.addSpacing(6)
+        layout.addWidget(self._create_divider())
+        layout.addSpacing(6)
+
+        # 2. Audio Download Location
+        row_aud_dir = QVBoxLayout()
+        row_aud_dir.setSpacing(6)
+        lbl_aud_title = QLabel("Audio Download Location")
+        lbl_aud_title.setObjectName("settingsItemTitle")
+        row_aud_dir.addWidget(lbl_aud_title)
+
+        lbl_aud_desc = QLabel("Downloaded music and audio tracks will be saved here automatically (default: ~/Downloads/Bemudex/Audio).")
+        lbl_aud_desc.setObjectName("settingsItemDesc")
+        lbl_aud_desc.setWordWrap(True)
+        row_aud_dir.addWidget(lbl_aud_desc)
+
+        row_aud_dir.addSpacing(4)
+
+        self.input_audio_folder = QLineEdit()
+        self.input_audio_folder.setObjectName("settingsPathInput")
+        self.input_audio_folder.setFixedHeight(38)
+        self.input_audio_folder.setReadOnly(True)
+        row_aud_dir.addWidget(self.input_audio_folder)
+
+        row_aud_dir.addSpacing(6)
+
+        aud_btn_row = QHBoxLayout()
+        aud_btn_row.setSpacing(10)
+        btn_browse_aud = QPushButton("Browse Audio Folder...")
+        btn_browse_aud.setObjectName("btnSettingsAction")
+        btn_browse_aud.setFixedHeight(36)
+        btn_browse_aud.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_browse_aud.clicked.connect(self._on_browse_audio_folder_clicked)
+        aud_btn_row.addWidget(btn_browse_aud)
+
+        btn_default_aud = QPushButton("Reset to Default")
+        btn_default_aud.setObjectName("btnSettingsAction")
+        btn_default_aud.setFixedHeight(36)
+        btn_default_aud.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_default_aud.clicked.connect(self._on_reset_audio_folder_clicked)
+        aud_btn_row.addWidget(btn_default_aud)
+        aud_btn_row.addStretch()
+        row_aud_dir.addLayout(aud_btn_row)
+        layout.addLayout(row_aud_dir)
 
         layout.addSpacing(6)
         layout.addWidget(self._create_divider())
@@ -306,6 +370,36 @@ class SettingsView(QWidget):
         layout.addWidget(self._create_divider())
         layout.addSpacing(6)
 
+        # 3. Desktop Notifications
+        row_notify = QHBoxLayout()
+        row_notify.setSpacing(16)
+        notify_text_col = QVBoxLayout()
+        notify_text_col.setSpacing(4)
+
+        lbl_notify_title = QLabel("Desktop Notifications")
+        lbl_notify_title.setObjectName("settingsItemTitle")
+        notify_text_col.addWidget(lbl_notify_title)
+
+        lbl_notify_desc = QLabel("Show a native system notification when a download completes in the background.")
+        lbl_notify_desc.setObjectName("settingsItemDesc")
+        lbl_notify_desc.setWordWrap(True)
+        notify_text_col.addWidget(lbl_notify_desc)
+        row_notify.addLayout(notify_text_col, 1)
+
+        self.switch_desktop_notify = Switch(
+            checked=load_desktop_notifications(),
+            accent_color=t.accent,
+            accent_text_color=t.accent_text,
+            is_dark=t.is_dark
+        )
+        self.switch_desktop_notify.toggled_state.connect(self._on_desktop_notify_toggled)
+        row_notify.addWidget(self.switch_desktop_notify)
+        layout.addLayout(row_notify)
+
+        layout.addSpacing(6)
+        layout.addWidget(self._create_divider())
+        layout.addSpacing(6)
+
         # 3. FFmpeg Encoder Binary
         row_ffmpeg = QVBoxLayout()
         row_ffmpeg.setSpacing(6)
@@ -350,7 +444,280 @@ class SettingsView(QWidget):
 
         self.content_layout.addWidget(card)
 
-    # ── Section 2: yt-dlp Engine ──
+    # ── Section 3: Download & Playback Enhancements ──
+    def _build_enhancements_card(self):
+        card = QFrame()
+        card.setObjectName("settingsCard")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(18)
+
+        # Header
+        lbl_section = QLabel("DOWNLOAD & PLAYBACK ENHANCEMENTS")
+        lbl_section.setObjectName("settingsSectionTitle")
+        layout.addWidget(lbl_section)
+
+        t = get_theme(load_theme())
+
+        # 1. Device Compatibility Mode (H.264 / AAC)
+        row_compat = QHBoxLayout()
+        row_compat.setSpacing(16)
+        compat_text_col = QVBoxLayout()
+        compat_text_col.setSpacing(4)
+
+        lbl_compat_title = QLabel("Device Compatibility Mode (H.264 / MP4)")
+        lbl_compat_title.setObjectName("settingsItemTitle")
+        compat_text_col.addWidget(lbl_compat_title)
+
+        lbl_compat_desc = QLabel(
+            "Prioritizes standard H.264 video and AAC audio for maximum compatibility with older smart TVs, "
+            "car screens, and video editors (DaVinci Resolve, Premiere) instead of AV1/VP9."
+        )
+        lbl_compat_desc.setObjectName("settingsItemDesc")
+        lbl_compat_desc.setWordWrap(True)
+        compat_text_col.addWidget(lbl_compat_desc)
+        row_compat.addLayout(compat_text_col, 1)
+
+        self.switch_compat_mode = Switch(
+            checked=load_compatibility_mode(),
+            accent_color=t.accent,
+            accent_text_color=t.accent_text,
+            is_dark=t.is_dark
+        )
+        self.switch_compat_mode.toggled_state.connect(self._on_compat_mode_toggled)
+        row_compat.addWidget(self.switch_compat_mode)
+        layout.addLayout(row_compat)
+
+        layout.addSpacing(6)
+        layout.addWidget(self._create_divider())
+        layout.addSpacing(6)
+
+        # 2. SponsorBlock Integration
+        row_sb = QHBoxLayout()
+        row_sb.setSpacing(16)
+        sb_text_col = QVBoxLayout()
+        sb_text_col.setSpacing(4)
+
+        lbl_sb_title = QLabel("SponsorBlock (Skip Sponsors & Intros)")
+        lbl_sb_title.setObjectName("settingsItemTitle")
+        sb_text_col.addWidget(lbl_sb_title)
+
+        lbl_sb_desc = QLabel(
+            "Automatically detects and splices out sponsor segments, self-promotions, interaction reminders, "
+            "and filler intros from downloaded YouTube videos using crowdsourced SponsorBlock data."
+        )
+        lbl_sb_desc.setObjectName("settingsItemDesc")
+        lbl_sb_desc.setWordWrap(True)
+        sb_text_col.addWidget(lbl_sb_desc)
+        row_sb.addLayout(sb_text_col, 1)
+
+        self.switch_sponsorblock = Switch(
+            checked=load_sponsorblock_enabled(),
+            accent_color=t.accent,
+            accent_text_color=t.accent_text,
+            is_dark=t.is_dark
+        )
+        self.switch_sponsorblock.toggled_state.connect(self._on_sponsorblock_toggled)
+        row_sb.addWidget(self.switch_sponsorblock)
+        layout.addLayout(row_sb)
+
+        layout.addSpacing(6)
+        layout.addWidget(self._create_divider())
+        layout.addSpacing(6)
+
+        # 3. Crop Audio Artwork to Square 1:1
+        row_crop = QHBoxLayout()
+        row_crop.setSpacing(16)
+        crop_text_col = QVBoxLayout()
+        crop_text_col.setSpacing(4)
+
+        lbl_crop_title = QLabel("Crop Audio Artwork to Square (1:1)")
+        lbl_crop_title.setObjectName("settingsItemTitle")
+        crop_text_col.addWidget(lbl_crop_title)
+
+        lbl_crop_desc = QLabel(
+            "Center-crops 16:9 widescreen thumbnails into a 1:1 square before embedding into audio files, "
+            "preventing black bars and stretched cover art in music players."
+        )
+        lbl_crop_desc.setObjectName("settingsItemDesc")
+        lbl_crop_desc.setWordWrap(True)
+        crop_text_col.addWidget(lbl_crop_desc)
+        row_crop.addLayout(crop_text_col, 1)
+
+        self.switch_crop_artwork = Switch(
+            checked=load_crop_artwork(),
+            accent_color=t.accent,
+            accent_text_color=t.accent_text,
+            is_dark=t.is_dark
+        )
+        self.switch_crop_artwork.toggled_state.connect(self._on_crop_artwork_toggled)
+        row_crop.addWidget(self.switch_crop_artwork)
+        layout.addLayout(row_crop)
+
+        layout.addSpacing(6)
+        layout.addWidget(self._create_divider())
+        layout.addSpacing(6)
+
+        # 4. Preferred Subtitle Languages
+        row_sub_langs = QVBoxLayout()
+        row_sub_langs.setSpacing(6)
+
+        lbl_langs_title = QLabel("Preferred Subtitle Languages")
+        lbl_langs_title.setObjectName("settingsItemTitle")
+        row_sub_langs.addWidget(lbl_langs_title)
+
+        lbl_langs_desc = QLabel(
+            "Comma-separated language codes to download and embed when subtitles are requested (e.g. en, en-US, es, ja, fr, de, hi)."
+        )
+        lbl_langs_desc.setObjectName("settingsItemDesc")
+        lbl_langs_desc.setWordWrap(True)
+        row_sub_langs.addWidget(lbl_langs_desc)
+
+        row_sub_langs.addSpacing(4)
+
+        self.input_sub_langs = QLineEdit()
+        self.input_sub_langs.setObjectName("settingsPathInput")
+        self.input_sub_langs.setFixedHeight(38)
+        self.input_sub_langs.setPlaceholderText("en, en-US, en-GB")
+        self.input_sub_langs.setText(load_subtitle_languages())
+        self.input_sub_langs.editingFinished.connect(self._on_sub_langs_changed)
+        row_sub_langs.addWidget(self.input_sub_langs)
+        layout.addLayout(row_sub_langs)
+
+        layout.addSpacing(6)
+        layout.addWidget(self._create_divider())
+        layout.addSpacing(6)
+
+        # 5. Include Auto-Generated Subtitles
+        row_auto_subs = QHBoxLayout()
+        row_auto_subs.setSpacing(16)
+        auto_subs_text_col = QVBoxLayout()
+        auto_subs_text_col.setSpacing(4)
+
+        lbl_auto_subs_title = QLabel("Include Auto-Generated Subtitles")
+        lbl_auto_subs_title.setObjectName("settingsItemTitle")
+        auto_subs_text_col.addWidget(lbl_auto_subs_title)
+
+        lbl_auto_subs_desc = QLabel(
+            "Allow downloading YouTube's automatic speech-to-text captions if no human-created subtitle tracks are found."
+        )
+        lbl_auto_subs_desc.setObjectName("settingsItemDesc")
+        lbl_auto_subs_desc.setWordWrap(True)
+        auto_subs_text_col.addWidget(lbl_auto_subs_desc)
+        row_auto_subs.addLayout(auto_subs_text_col, 1)
+
+        self.switch_auto_subs = Switch(
+            checked=load_auto_subtitles(),
+            accent_color=t.accent,
+            accent_text_color=t.accent_text,
+            is_dark=t.is_dark
+        )
+        self.switch_auto_subs.toggled_state.connect(self._on_auto_subs_toggled)
+        row_auto_subs.addWidget(self.switch_auto_subs)
+        layout.addLayout(row_auto_subs)
+
+        self.content_layout.addWidget(card)
+
+    # ── Section 4: Authentication & Cookies ──
+    def _build_cookies_card(self):
+        card = QFrame()
+        card.setObjectName("settingsCard")
+        self.card_cookies = card
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(18)
+
+        # Header
+        lbl_section = QLabel("AUTHENTICATION & COOKIES")
+        lbl_section.setObjectName("settingsSectionTitle")
+        layout.addWidget(lbl_section)
+
+        # 1. Cookie Source
+        row_cookies = QHBoxLayout()
+        row_cookies.setSpacing(16)
+        cookies_text_col = QVBoxLayout()
+        cookies_text_col.setSpacing(4)
+
+        lbl_cookie_title = QLabel("Browser Cookies Source")
+        lbl_cookie_title.setObjectName("settingsItemTitle")
+        cookies_text_col.addWidget(lbl_cookie_title)
+
+        lbl_cookie_desc = QLabel(
+            "Pass session cookies from your web browser or an exported cookies.txt file to bypass "
+            "YouTube's 'Sign in to confirm you're not a bot' wall and access private, age-restricted, "
+            "or member-only media."
+        )
+        lbl_cookie_desc.setObjectName("settingsItemDesc")
+        lbl_cookie_desc.setWordWrap(True)
+        cookies_text_col.addWidget(lbl_cookie_desc)
+        row_cookies.addLayout(cookies_text_col, 1)
+
+        self.combo_cookies = QComboBox()
+        self.combo_cookies.setObjectName("settingsComboBox")
+        self.combo_cookies.setFixedWidth(220)
+        self.combo_cookies.setFixedHeight(38)
+        cookie_options = [
+            ("None (Anonymous)", "none"),
+            ("Firefox", "firefox"),
+            ("Google Chrome", "chrome"),
+            ("Brave Browser", "brave"),
+            ("Chromium", "chromium"),
+            ("Custom cookies.txt File", "file"),
+        ]
+        for label, val in cookie_options:
+            self.combo_cookies.addItem(label, val)
+
+        self.combo_cookies.currentIndexChanged.connect(self._on_cookies_source_changed)
+        row_cookies.addWidget(self.combo_cookies)
+        layout.addLayout(row_cookies)
+
+        # 2. File Picker Row (visible only when 'file' is selected)
+        self.row_cookie_file = QVBoxLayout()
+        self.row_cookie_file.setSpacing(6)
+
+        lbl_file_title = QLabel("Custom Cookies File Path")
+        lbl_file_title.setObjectName("settingsItemTitle")
+        self.row_cookie_file.addWidget(lbl_file_title)
+
+        self.input_cookies_file = QLineEdit()
+        self.input_cookies_file.setObjectName("settingsPathInput")
+        self.input_cookies_file.setFixedHeight(38)
+        self.input_cookies_file.setReadOnly(True)
+        self.input_cookies_file.setPlaceholderText("Select an exported cookies.txt file...")
+        self.row_cookie_file.addWidget(self.input_cookies_file)
+
+        file_btn_row = QHBoxLayout()
+        file_btn_row.setSpacing(10)
+        btn_browse_cookie_file = QPushButton("Browse cookies.txt...")
+        btn_browse_cookie_file.setObjectName("btnSettingsAction")
+        btn_browse_cookie_file.setFixedHeight(36)
+        btn_browse_cookie_file.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_browse_cookie_file.clicked.connect(self._on_browse_cookies_file_clicked)
+        file_btn_row.addWidget(btn_browse_cookie_file)
+
+        btn_clear_cookie_file = QPushButton("Clear")
+        btn_clear_cookie_file.setObjectName("btnSettingsAction")
+        btn_clear_cookie_file.setFixedHeight(36)
+        btn_clear_cookie_file.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_clear_cookie_file.clicked.connect(self._on_clear_cookies_file_clicked)
+        file_btn_row.addWidget(btn_clear_cookie_file)
+        file_btn_row.addStretch()
+        self.row_cookie_file.addLayout(file_btn_row)
+
+        self.cookie_file_container = QWidget()
+        self.cookie_file_container.setLayout(self.row_cookie_file)
+        self.cookie_file_container.setVisible(False)
+        layout.addWidget(self.cookie_file_container)
+
+        # Helpful hint
+        lbl_cookie_hint = QLabel(
+            "💡 Tip: On Linux, Firefox or an exported cookies.txt file works directly without requiring OS keyring access."
+        )
+        lbl_cookie_hint.setObjectName("settingsItemDesc")
+        lbl_cookie_hint.setWordWrap(True)
+        layout.addWidget(lbl_cookie_hint)
+
+        self.content_layout.addWidget(card)
     def _build_engine_card(self):
         card = QFrame()
         card.setObjectName("settingsCard")
@@ -402,6 +769,40 @@ class SettingsView(QWidget):
         health_layout.addWidget(self.lbl_health_status)
 
         layout.addWidget(self.health_frame)
+        layout.addSpacing(6)
+        layout.addWidget(self._create_divider())
+        layout.addSpacing(6)
+
+        # ── Release Channel Selector (Nightly vs Stable) ──
+        row_channel = QHBoxLayout()
+        row_channel.setSpacing(16)
+        channel_text_col = QVBoxLayout()
+        channel_text_col.setSpacing(4)
+
+        lbl_channel_title = QLabel("yt-dlp Release Channel")
+        lbl_channel_title.setObjectName("settingsItemTitle")
+        channel_text_col.addWidget(lbl_channel_title)
+
+        lbl_channel_desc = QLabel(
+            "Select which release branch of yt-dlp to track. Nightly provides daily updates with the latest extractors and YouTube cipher fixes."
+        )
+        lbl_channel_desc.setObjectName("settingsItemDesc")
+        lbl_channel_desc.setWordWrap(True)
+        channel_text_col.addWidget(lbl_channel_desc)
+        row_channel.addLayout(channel_text_col, 1)
+
+        self.combo_engine_channel = QComboBox()
+        self.combo_engine_channel.setObjectName("settingsComboBox")
+        self.combo_engine_channel.setFixedWidth(230)
+        self.combo_engine_channel.setFixedHeight(38)
+        self.combo_engine_channel.addItem("Nightly (Recommended)", "nightly")
+        self.combo_engine_channel.addItem("Stable (Official Releases)", "stable")
+        self.combo_engine_channel.currentIndexChanged.connect(self._on_engine_channel_changed)
+        row_channel.addWidget(self.combo_engine_channel)
+        layout.addLayout(row_channel)
+
+        layout.addSpacing(6)
+        layout.addWidget(self._create_divider())
         layout.addSpacing(6)
 
         # Engine Version and Source info
@@ -629,9 +1030,11 @@ class SettingsView(QWidget):
             self.combo_theme.setCurrentIndex(idx)
             self.combo_theme.blockSignals(False)
 
-        # 1. Folder
-        folder = load_last_folder()
-        self.input_folder.setText(folder)
+        # 1. Folders
+        vid_folder = load_video_folder()
+        self.input_video_folder.setText(vid_folder)
+        aud_folder = load_audio_folder()
+        self.input_audio_folder.setText(aud_folder)
 
         # 2. Audio Format
         fmt = load_audio_format()
@@ -643,6 +1046,20 @@ class SettingsView(QWidget):
         # 3. Auto-close panel toggle
         if hasattr(self, 'switch_auto_close'):
             self.switch_auto_close.setChecked(load_auto_close_panel())
+        if hasattr(self, 'switch_desktop_notify'):
+            self.switch_desktop_notify.setChecked(load_desktop_notifications())
+
+        # Enhancements & Playback
+        if hasattr(self, 'switch_compat_mode'):
+            self.switch_compat_mode.setChecked(load_compatibility_mode())
+        if hasattr(self, 'switch_sponsorblock'):
+            self.switch_sponsorblock.setChecked(load_sponsorblock_enabled())
+        if hasattr(self, 'switch_crop_artwork'):
+            self.switch_crop_artwork.setChecked(load_crop_artwork())
+        if hasattr(self, 'input_sub_langs'):
+            self.input_sub_langs.setText(load_subtitle_languages())
+        if hasattr(self, 'switch_auto_subs'):
+            self.switch_auto_subs.setChecked(load_auto_subtitles())
 
         # UI Scaling combo
         if hasattr(self, 'combo_scale'):
@@ -656,6 +1073,19 @@ class SettingsView(QWidget):
         # Check updates on launch toggle
         if hasattr(self, 'switch_check_launch'):
             self.switch_check_launch.setChecked(load_check_updates_on_launch())
+
+        # Cookies Source & Custom File
+        if hasattr(self, 'combo_cookies'):
+            c_src = load_cookies_source()
+            c_idx = self.combo_cookies.findData(c_src)
+            if c_idx >= 0 and self.combo_cookies.currentIndex() != c_idx:
+                self.combo_cookies.blockSignals(True)
+                self.combo_cookies.setCurrentIndex(c_idx)
+                self.combo_cookies.blockSignals(False)
+            if hasattr(self, 'cookie_file_container'):
+                self.cookie_file_container.setVisible(c_src == "file")
+        if hasattr(self, 'input_cookies_file'):
+            self.input_cookies_file.setText(load_cookies_file())
 
         # 3. FFmpeg
         ff_info = self.dep_manager.detect()
@@ -681,6 +1111,15 @@ class SettingsView(QWidget):
         is_user_engine = os.path.exists(YT_DLP_ENGINE_DIR) and os.path.exists(os.path.join(YT_DLP_ENGINE_DIR, "__init__.py"))
         self.lbl_engine_src.setText("User override (~/.bemudex/engine)" if is_user_engine else "Bundled / System package")
 
+        # 5. Engine Channel
+        if hasattr(self, 'combo_engine_channel'):
+            ch = load_engine_channel()
+            ch_idx = self.combo_engine_channel.findData(ch)
+            if ch_idx >= 0 and self.combo_engine_channel.currentIndex() != ch_idx:
+                self.combo_engine_channel.blockSignals(True)
+                self.combo_engine_channel.setCurrentIndex(ch_idx)
+                self.combo_engine_channel.blockSignals(False)
+
         # Rollback button visibility
         can_rollback = self.dep_manager.can_rollback()
         self.btn_rollback_engine.setVisible(can_rollback)
@@ -688,30 +1127,63 @@ class SettingsView(QWidget):
         # 5. Health Summary
         self.update_health_summary()
 
-    def update_folder(self, folder: str):
+    def update_folder(self, folder: str = ""):
         """Synchronizes folder display when changed externally from HomeView."""
-        self.input_folder.setText(folder)
+        if hasattr(self, 'input_video_folder'):
+            self.input_video_folder.setText(load_video_folder())
+        if hasattr(self, 'input_audio_folder'):
+            self.input_audio_folder.setText(load_audio_folder())
         self.update_health_summary()
 
     def apply_theme(self, theme_id: str):
         t = get_theme(theme_id)
         if hasattr(self, 'switch_auto_close'):
             self.switch_auto_close.set_theme(t.accent, t.accent_text, t.is_dark)
+        if hasattr(self, 'switch_desktop_notify'):
+            self.switch_desktop_notify.set_theme(t.accent, t.accent_text, t.is_dark)
         if hasattr(self, 'switch_check_launch'):
             self.switch_check_launch.set_theme(t.accent, t.accent_text, t.is_dark)
+        if hasattr(self, 'switch_compat_mode'):
+            self.switch_compat_mode.set_theme(t.accent, t.accent_text, t.is_dark)
+        if hasattr(self, 'switch_sponsorblock'):
+            self.switch_sponsorblock.set_theme(t.accent, t.accent_text, t.is_dark)
+        if hasattr(self, 'switch_crop_artwork'):
+            self.switch_crop_artwork.set_theme(t.accent, t.accent_text, t.is_dark)
+        if hasattr(self, 'switch_auto_subs'):
+            self.switch_auto_subs.set_theme(t.accent, t.accent_text, t.is_dark)
         self.update_health_summary()
 
     def _is_folder_writable(self, folder: str) -> bool:
-        if not folder or not os.path.exists(folder):
+        if not folder:
             return False
-        test_file = os.path.join(folder, f".bemudex_test_write_{os.getpid()}")
-        try:
-            with open(test_file, "w") as f:
-                f.write("ok")
-            os.remove(test_file)
-            return True
-        except Exception:
-            return False
+        if os.path.exists(folder):
+            test_file = os.path.join(folder, f".bemudex_test_write_{os.getpid()}")
+            try:
+                with open(test_file, "w") as f:
+                    f.write("ok")
+                os.remove(test_file)
+                return True
+            except Exception:
+                return False
+
+        # If the target directory does not exist yet (created on first download),
+        # verify that the closest existing parent directory is writable.
+        parent = os.path.abspath(folder)
+        while parent and not os.path.exists(parent):
+            prev = parent
+            parent = os.path.dirname(parent)
+            if parent == prev:
+                break
+        if parent and os.path.exists(parent):
+            test_file = os.path.join(parent, f".bemudex_test_write_{os.getpid()}")
+            try:
+                with open(test_file, "w") as f:
+                    f.write("ok")
+                os.remove(test_file)
+                return True
+            except Exception:
+                return False
+        return False
 
     def update_health_summary(self, ytdlp_status: str = "healthy"):
         if not hasattr(self, 'health_frame'):
@@ -733,12 +1205,15 @@ class SettingsView(QWidget):
         else:
             self.lbl_health_ffmpeg.setText("<span style='color: #ef4444; font-size: 14px;'>●</span>  FFmpeg")
 
-        target_folder = self.input_folder.text() or load_last_folder()
-        folder_ok = self._is_folder_writable(target_folder)
+        target_vid = self.input_video_folder.text() if hasattr(self, 'input_video_folder') else load_video_folder()
+        target_aud = self.input_audio_folder.text() if hasattr(self, 'input_audio_folder') else load_audio_folder()
+        vid_ok = self._is_folder_writable(target_vid)
+        aud_ok = self._is_folder_writable(target_aud)
+        folder_ok = vid_ok and aud_ok
         if folder_ok:
-            self.lbl_health_folder.setText("<span style='color: #10b981; font-size: 14px;'>●</span>  Download Folder")
+            self.lbl_health_folder.setText("<span style='color: #10b981; font-size: 14px;'>●</span>  Download Folders")
         else:
-            self.lbl_health_folder.setText("<span style='color: #ef4444; font-size: 14px;'>●</span>  Download Folder")
+            self.lbl_health_folder.setText("<span style='color: #ef4444; font-size: 14px;'>●</span>  Download Folders")
 
         if not ff_ok:
             self.health_frame.setProperty("status", "danger")
@@ -747,7 +1222,12 @@ class SettingsView(QWidget):
         elif not folder_ok:
             self.health_frame.setProperty("status", "danger")
             self.lbl_health_status.setStyleSheet("color: #ef4444; font-weight: 700;")
-            self.lbl_health_status.setText("⚠ Attention Required: Download folder is not writable.")
+            if not vid_ok and not aud_ok:
+                self.lbl_health_status.setText("⚠ Attention Required: Video & Audio folders are not writable.")
+            elif not vid_ok:
+                self.lbl_health_status.setText("⚠ Attention Required: Video download folder is not writable.")
+            else:
+                self.lbl_health_status.setText("⚠ Attention Required: Audio download folder is not writable.")
         elif ytdlp_status == "warning":
             self.health_frame.setProperty("status", "warning")
             self.lbl_health_status.setStyleSheet("color: #f59e0b; font-weight: 700;")
@@ -763,7 +1243,8 @@ class SettingsView(QWidget):
     def notify_update_available(self, res: dict):
         installed = res.get("installed", "unknown")
         latest = res.get("latest", "unknown")
-        self.lbl_engine_status.setText(f"Update available! (Current: {installed} → Latest: {latest})")
+        ch_name = res.get("channel", load_engine_channel()).capitalize()
+        self.lbl_engine_status.setText(f"Update available ({ch_name})! (Current: {installed} → Latest: {latest})")
         self.lbl_engine_status.setStyleSheet("color: #f59e0b; font-weight: 600;")
         self.btn_update_engine.show()
         self.update_health_summary(ytdlp_status="warning")
@@ -792,19 +1273,51 @@ class SettingsView(QWidget):
     def _on_check_launch_toggled(self, checked: bool):
         save_check_updates_on_launch(checked)
 
+    def _on_browse_video_folder_clicked(self):
+        current = self.input_video_folder.text() or get_default_video_folder()
+        chosen = QFileDialog.getExistingDirectory(self, "Select Video Download Directory", current)
+        if chosen:
+            try:
+                os.makedirs(chosen, exist_ok=True)
+            except Exception:
+                pass
+            save_video_folder(chosen)
+            self.input_video_folder.setText(chosen)
+            self.video_folder_changed.emit(chosen)
+            self.update_health_summary()
+
+    def _on_reset_video_folder_clicked(self):
+        default_dir = get_default_video_folder()
+        save_video_folder(default_dir)
+        self.input_video_folder.setText(default_dir)
+        self.video_folder_changed.emit(default_dir)
+        self.update_health_summary()
+
+    def _on_browse_audio_folder_clicked(self):
+        current = self.input_audio_folder.text() or get_default_audio_folder()
+        chosen = QFileDialog.getExistingDirectory(self, "Select Audio Download Directory", current)
+        if chosen:
+            try:
+                os.makedirs(chosen, exist_ok=True)
+            except Exception:
+                pass
+            save_audio_folder(chosen)
+            self.input_audio_folder.setText(chosen)
+            self.audio_folder_changed.emit(chosen)
+            self.update_health_summary()
+
+    def _on_reset_audio_folder_clicked(self):
+        default_dir = get_default_audio_folder()
+        save_audio_folder(default_dir)
+        self.input_audio_folder.setText(default_dir)
+        self.audio_folder_changed.emit(default_dir)
+        self.update_health_summary()
+
     def _on_browse_folder_clicked(self):
-        current = self.input_folder.text() or get_default_download_folder()
-        chosen = QFileDialog.getExistingDirectory(self, "Select Download Directory", current)
-        if chosen and os.path.exists(chosen):
-            save_last_folder(chosen)
-            self.input_folder.setText(chosen)
-            self.folder_changed.emit(chosen)
+        self._on_browse_video_folder_clicked()
 
     def _on_reset_folder_clicked(self):
-        default_dir = get_default_download_folder()
-        save_last_folder(default_dir)
-        self.input_folder.setText(default_dir)
-        self.folder_changed.emit(default_dir)
+        self._on_reset_video_folder_clicked()
 
     def _on_audio_format_changed(self, index: int):
         codecs = ["mp3", "m4a", "flac", "wav", "aac"]
@@ -814,6 +1327,61 @@ class SettingsView(QWidget):
 
     def _on_auto_close_toggled(self, checked: bool):
         save_auto_close_panel(checked)
+
+    def _on_desktop_notify_toggled(self, checked: bool):
+        save_desktop_notifications(checked)
+        status_msg = "Desktop notifications enabled" if checked else "Desktop notifications disabled"
+        self.toast_requested.emit(status_msg, "info")
+
+    def scroll_to_cookies(self):
+        if hasattr(self, 'scroll') and hasattr(self, 'card_cookies'):
+            self.scroll.ensureWidgetVisible(self.card_cookies, 0, 50)
+
+    def _on_compat_mode_toggled(self, checked: bool):
+        save_compatibility_mode(checked)
+        status_msg = "Device compatibility mode (H.264/MP4) enabled" if checked else "Standard high-efficiency mode (AV1/VP9) enabled"
+        self.toast_requested.emit(status_msg, "info")
+
+    def _on_sponsorblock_toggled(self, checked: bool):
+        save_sponsorblock_enabled(checked)
+        status_msg = "SponsorBlock enabled: Sponsor segments will be skipped" if checked else "SponsorBlock disabled"
+        self.toast_requested.emit(status_msg, "info")
+
+    def _on_crop_artwork_toggled(self, checked: bool):
+        save_crop_artwork(checked)
+        status_msg = "Square 1:1 artwork cropping enabled for audio" if checked else "Square artwork cropping disabled"
+        self.toast_requested.emit(status_msg, "info")
+
+    def _on_sub_langs_changed(self):
+        text = self.input_sub_langs.text().strip()
+        save_subtitle_languages(text)
+        self.toast_requested.emit(f"Subtitle languages saved: {text or 'en, en-US, en-GB'}", "info")
+
+    def _on_auto_subs_toggled(self, checked: bool):
+        save_auto_subtitles(checked)
+        status_msg = "Auto-generated subtitles enabled" if checked else "Auto-generated subtitles disabled"
+        self.toast_requested.emit(status_msg, "info")
+
+    def _on_cookies_source_changed(self, index: int):
+        source = self.combo_cookies.itemData(index) or "none"
+        save_cookies_source(source)
+        if hasattr(self, 'cookie_file_container'):
+            self.cookie_file_container.setVisible(source == "file")
+        self.toast_requested.emit(f"Cookies source updated: {self.combo_cookies.currentText()}", "success")
+
+    def _on_browse_cookies_file_clicked(self):
+        current_file = load_cookies_file()
+        start_dir = os.path.dirname(current_file) if current_file else os.path.expanduser("~")
+        chosen, _ = QFileDialog.getOpenFileName(self, "Select cookies.txt File", start_dir, "Text Files (*.txt);;All Files (*)")
+        if chosen and os.path.exists(chosen):
+            save_cookies_file(chosen)
+            self.input_cookies_file.setText(chosen)
+            self.toast_requested.emit("Cookies file saved.", "success")
+
+    def _on_clear_cookies_file_clicked(self):
+        save_cookies_file("")
+        self.input_cookies_file.setText("")
+        self.toast_requested.emit("Cookies file cleared.", "info")
 
     def _on_browse_ffmpeg_clicked(self):
         chosen, _ = QFileDialog.getOpenFileName(self, "Select FFmpeg Executable", "/usr/bin", "Executables (*)")
@@ -834,6 +1402,13 @@ class SettingsView(QWidget):
         QTimer.singleShot(1500, lambda: self.btn_auto_ff.setText("Auto-Detect"))
 
     # ── Event Handlers: Engine Updates ──
+    def _on_engine_channel_changed(self, index: int):
+        channel = self.combo_engine_channel.itemData(index) or "nightly"
+        save_engine_channel(channel)
+        channel_name = "Nightly (Daily Fixes)" if channel == "nightly" else "Stable (Official)"
+        self.toast_requested.emit(f"yt-dlp channel set to {channel_name}. Checking for updates...", "info")
+        self._on_check_engine_clicked()
+
     def _on_check_engine_clicked(self):
         self.btn_check_engine.setEnabled(False)
         self.btn_check_engine.setText("Checking...")
@@ -853,13 +1428,14 @@ class SettingsView(QWidget):
             installed = res.get("installed")
             latest = res.get("latest")
             update_available = res.get("update_available", False)
+            ch_name = res.get("channel", "nightly").capitalize()
 
             if update_available:
-                self.lbl_engine_status.setText(f"Update available! (Current: {installed} → Latest: {latest})")
+                self.lbl_engine_status.setText(f"Update available ({ch_name})! (Current: {installed} → Latest: {latest})")
                 self.btn_update_engine.show()
                 self.update_health_summary(ytdlp_status="warning")
             else:
-                self.lbl_engine_status.setText(f"✓ Engine is up to date (version {installed}).")
+                self.lbl_engine_status.setText(f"✓ Engine is up to date on {ch_name} channel (version {installed}).")
                 self.btn_update_engine.hide()
                 self.update_health_summary(ytdlp_status="healthy")
 
@@ -900,6 +1476,7 @@ class SettingsView(QWidget):
                 "version": new_ver,
                 "update_available": False
             })
+            self.toast_requested.emit(f"yt-dlp updated to {new_ver} successfully.", "success")
         elif status == "up_to_date":
             self.btn_update_engine.hide()
             self.lbl_engine_status.setText(res.get("message", "Already up to date."))
@@ -909,9 +1486,11 @@ class SettingsView(QWidget):
                 "version": res.get("version", ""),
                 "update_available": False
             })
+            self.toast_requested.emit(res.get("message", "yt-dlp is up to date."), "info")
         else:
             msg = res.get("message", "Engine update failed.")
             self.lbl_engine_status.setText(f"❌ {msg}")
+            self.toast_requested.emit(msg, "error")
 
     def _on_rollback_engine_clicked(self):
         self.btn_rollback_engine.setEnabled(False)

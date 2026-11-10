@@ -2,7 +2,7 @@ import re
 import yt_dlp
 from PyQt6.QtCore import QThread, pyqtSignal
 
-from services.downloader import get_ffmpeg_path
+from services.downloader import get_ffmpeg_path, get_base_ydl_opts, clean_media_url
 from core.logger import logger
 
 
@@ -11,6 +11,7 @@ class YtdlPlaylistLogger:
     def __init__(self, on_count):
         self.on_count = on_count
         self._emitted = False
+        self.last_error = ""
 
     def debug(self, msg):
         if not self._emitted:
@@ -31,7 +32,7 @@ class YtdlPlaylistLogger:
         pass
 
     def error(self, msg):
-        pass
+        self.last_error = str(msg)
 
 
 class MetadataWorker(QThread):
@@ -42,15 +43,31 @@ class MetadataWorker(QThread):
 
     def __init__(self, url: str):
         super().__init__()
-        self.url = url.strip()
+        self.url = clean_media_url(url.strip())
 
     def run(self):
+        playlist_logger = YtdlPlaylistLogger(lambda c: self.playlist_detected.emit(c))
         try:
+            base_opts = get_base_ydl_opts()
+            base_opts.pop('remote_components', None)
+            
+            is_playlist_hint = any(k in self.url.lower() for k in ['list=', 'playlist', '/sets/', 'album'])
+            
             ydl_opts = {
+                **base_opts,
                 'skip_download': True,
                 'ignoreerrors': True,
-                'js_runtimes': {'bun': {}, 'node': {}, 'deno': {}},
-                'logger': YtdlPlaylistLogger(lambda c: self.playlist_detected.emit(c)),
+                'extract_flat': 'in_playlist',
+                'lazy_playlist': True,
+                'noplaylist': not is_playlist_hint,
+                'check_formats': False,
+                'get_comments': False,
+                'no_warnings': True,
+                'quiet': True,
+                'socket_timeout': 10,
+                'retries': 2,
+                'fragment_retries': 2,
+                'logger': playlist_logger,
             }
             ffmpeg_path = get_ffmpeg_path()
             if ffmpeg_path:
@@ -60,7 +77,16 @@ class MetadataWorker(QThread):
                 info = ydl.extract_info(self.url, download=False)
 
             if not info:
-                self.metadata_error.emit("Could not extract info from URL")
+                err_text = playlist_logger.last_error or "Could not extract info from URL"
+                if "sign in" in err_text.lower() or "bot" in err_text.lower():
+                    err_text = "YouTube bot verification triggered: Enable browser cookies in Settings to bypass."
+                elif "private video" in err_text.lower():
+                    err_text = "This video is private."
+                elif "unavailable" in err_text.lower():
+                    err_text = "This video is unavailable."
+                elif "members-only" in err_text.lower():
+                    err_text = "This video is members-only."
+                self.metadata_error.emit(err_text)
                 return
 
             is_playlist = info.get('_type') == 'playlist'
@@ -93,7 +119,16 @@ class MetadataWorker(QThread):
             ), reverse=True)
 
             thumbnails = video_info.get('thumbnails', [])
-            thumb_url = thumbnails[-1].get('url', '') if thumbnails else video_info.get('thumbnail', '')
+            thumb_url = ''
+            if thumbnails:
+                # Pick the ideal size for 220x124 preview (300px - 720px) to avoid downloading massive 2-4MB 4K images
+                suitable = [t for t in thumbnails if t.get('width') and 300 <= t.get('width') <= 720]
+                if suitable:
+                    thumb_url = suitable[-1].get('url', '')
+                else:
+                    thumb_url = thumbnails[-1].get('url', '')
+            if not thumb_url:
+                thumb_url = video_info.get('thumbnail', '')
 
             views = video_info.get('view_count')
             if views:
@@ -209,4 +244,13 @@ class MetadataWorker(QThread):
             self.metadata_ready.emit(data)
         except Exception as e:
             logger.exception(f"Metadata extraction error: {e}")
-            self.metadata_error.emit(str(e))
+            err_text = str(e)
+            if "sign in" in err_text.lower() or "bot" in err_text.lower():
+                err_text = "YouTube bot verification triggered: Enable browser cookies in Settings to bypass."
+            elif "private video" in err_text.lower():
+                err_text = "This video is private."
+            elif "unavailable" in err_text.lower():
+                err_text = "This video is unavailable."
+            elif "members-only" in err_text.lower():
+                err_text = "This video is members-only."
+            self.metadata_error.emit(err_text)

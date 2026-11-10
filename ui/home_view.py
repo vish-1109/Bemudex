@@ -1,15 +1,22 @@
 import os
 from datetime import datetime
 
-from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QUrl, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QUrl, QTimer, QSize
 from PyQt6.QtGui import QPixmap, QGuiApplication, QPainter, QPainterPath
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QLineEdit,
-    QPushButton, QFrame, QFileDialog, QScrollArea
+    QPushButton, QFrame, QFileDialog, QScrollArea, QSizePolicy
 )
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-from services.config_manager import load_last_folder, save_last_folder, load_audio_format, load_theme
+from services.config_manager import (
+    load_video_folder, save_video_folder, load_audio_folder,
+    load_audio_format, load_theme,
+    load_crop_artwork, load_sponsorblock_enabled, load_compatibility_mode,
+    load_subtitle_languages, load_auto_subtitles
+)
+from services.downloader import clean_media_url
+from services.auth_helper import is_bot_or_auth_error
 from workers.metadata_worker import MetadataWorker
 from ui.icon_provider import get_icon, get_pixmap
 from ui.quality_card import QualityCard, FeatureCard
@@ -44,24 +51,34 @@ def create_rounded_pixmap(pix: QPixmap, target_w: int, target_h: int, radius: in
     return out
 
 
+class StatusNoticeLabel(QLabel):
+    """QLabel whose minimumSizeHint width is bounded so it never forces parent layouts to expand horizontally."""
+    def minimumSizeHint(self):
+        return QSize(50, super().minimumSizeHint().height())
+
+
 class HomeView(QWidget):
     """Primary Downloader screen matching Bemudex 2.0.3 design."""
     download_requested = pyqtSignal(dict)
     cancel_requested = pyqtSignal()
     folder_changed = pyqtSignal(str)
+    cookies_config_requested = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("centerWidget")
 
         # State
-        self.active_folder = load_last_folder() or os.path.join(os.path.expanduser("~"), "Downloads")
+        self.video_folder = load_video_folder()
+        self.audio_folder = load_audio_folder()
+        self.active_folder = self.video_folder
         self.active_mode = "video"       # "video" or "audio"
         self.active_quality = "best"     # "best", "4k", "1440", "1080", "720", "480"
         self.active_audio_format = load_audio_format() or "mp3"
         self.current_metadata = None
         self.meta_worker = None
         self._last_fetched_url = ""
+        self._metadata_cache = {}
         self.theme = get_theme(load_theme())
 
         # Debounced URL auto-fetch timer
@@ -104,7 +121,7 @@ class HomeView(QWidget):
         self.scroll_widget = QWidget()
         self.scroll_widget.setObjectName("centerScrollWidget")
         layout = QVBoxLayout(self.scroll_widget)
-        layout.setContentsMargins(52, 40, 52, 40)
+        layout.setContentsMargins(40, 32, 40, 32)
         layout.setSpacing(22)
 
         # 1. Header: Greeting
@@ -218,9 +235,43 @@ class HomeView(QWidget):
         layout.addLayout(action_layout)
 
         # 7. Status Feedback Notice
-        self.lbl_status = QLabel("Ready to analyze media link.")
+        self.lbl_status = StatusNoticeLabel("Ready to analyze media link.")
         self.lbl_status.setObjectName("statusNotice")
+        self.lbl_status.setWordWrap(True)
+        self.lbl_status.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.lbl_status)
+
+        # 7b. Bot-Check / Auth Helper Card (Shown when YouTube throws bot or sign-in walls)
+        self.bot_helper_card = QFrame()
+        self.bot_helper_card.setObjectName("botHelperCard")
+        self.bot_helper_card.hide()
+        bot_layout = QHBoxLayout(self.bot_helper_card)
+        bot_layout.setContentsMargins(16, 12, 16, 12)
+        bot_layout.setSpacing(14)
+
+        lbl_bot_icon = QLabel()
+        lbl_bot_icon.setPixmap(get_pixmap("alert-triangle", "#eab308", 22))
+        bot_layout.addWidget(lbl_bot_icon, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        bot_text_col = QVBoxLayout()
+        bot_text_col.setSpacing(2)
+        lbl_bot_title = QLabel("Authentication / Bot Verification Required")
+        lbl_bot_title.setObjectName("botHelperTitle")
+        bot_text_col.addWidget(lbl_bot_title)
+
+        lbl_bot_desc = QLabel("YouTube blocked access to this video. Connect your browser cookies in Settings to bypass this automatically.")
+        lbl_bot_desc.setObjectName("botHelperDesc")
+        lbl_bot_desc.setWordWrap(True)
+        bot_text_col.addWidget(lbl_bot_desc)
+        bot_layout.addLayout(bot_text_col, 1)
+
+        self.btn_bot_action = QPushButton("  Configure Cookies →")
+        self.btn_bot_action.setObjectName("btnBotHelperAction")
+        self.btn_bot_action.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_bot_action.clicked.connect(self.cookies_config_requested.emit)
+        bot_layout.addWidget(self.btn_bot_action, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        layout.addWidget(self.bot_helper_card)
 
         # 8. Feature Showcase Row (Shown when idle, hidden when metadata is loaded)
         self.feature_cards_widget = self._create_feature_cards_section()
@@ -344,6 +395,8 @@ class HomeView(QWidget):
     def _create_metadata_card(self) -> QFrame:
         card = QFrame()
         card.setProperty("class", "card-frame")
+        card.setMinimumHeight(156)
+        card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         layout = QHBoxLayout(card)
         layout.setContentsMargins(18, 16, 18, 16)
@@ -368,16 +421,16 @@ class HomeView(QWidget):
         self.lbl_duration_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         thumb_overlay_layout.addWidget(self.lbl_duration_badge, 0, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
 
-        layout.addWidget(self.thumb_container)
+        layout.addWidget(self.thumb_container, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        # Details Column (vertically centered)
+        # Details Column (vertically flexible to accommodate multiline titles)
         info_layout = QVBoxLayout()
         info_layout.setSpacing(6)
-        info_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
         self.lbl_meta_title = QLabel("Video Title")
         self.lbl_meta_title.setObjectName("metaTitle")
         self.lbl_meta_title.setWordWrap(True)
+        self.lbl_meta_title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding)
         info_layout.addWidget(self.lbl_meta_title)
 
         self.lbl_meta_channel = QLabel("Channel")
@@ -590,7 +643,7 @@ class HomeView(QWidget):
         self.lbl_folder_icon = QLabel()
         folder_layout.addWidget(self.lbl_folder_icon)
 
-        self.lbl_folder_path = QLabel(self.active_folder)
+        self.lbl_folder_path = QLabel(self.video_folder)
         self.lbl_folder_path.setObjectName("folderPathLabel")
         folder_layout.addWidget(self.lbl_folder_path, 1)
 
@@ -606,7 +659,7 @@ class HomeView(QWidget):
         layout.addWidget(self.video_options_widget)
         
         # Audio Options Widget
-        self.audio_options_widget = AudioOptionsWidget(initial_folder=self.active_folder)
+        self.audio_options_widget = AudioOptionsWidget(initial_folder=self.audio_folder)
         self.audio_options_widget.audio_format_changed.connect(self._on_audio_format_changed)
         self.audio_options_widget.folder_changed.connect(self._on_audio_folder_changed)
         self.audio_options_widget.hide()
@@ -648,6 +701,8 @@ class HomeView(QWidget):
     def _set_mode(self, mode: str):
         self.active_mode = mode
         if mode == "video":
+            self.active_folder = self.video_folder
+            self.folder_changed.emit(self.video_folder)
             self.btn_tab_video.setProperty("class", "format-tab active")
             self.btn_tab_audio.setProperty("class", "format-tab")
             self.video_options_widget.show()
@@ -677,6 +732,8 @@ class HomeView(QWidget):
                 ("480", "480p", "SD", False, "", ""),
             ], self.active_quality or "best")
         else:
+            self.active_folder = self.audio_folder
+            self.folder_changed.emit(self.audio_folder)
             self.btn_tab_video.setProperty("class", "format-tab")
             self.btn_tab_audio.setProperty("class", "format-tab active")
             self.video_options_widget.hide()
@@ -745,7 +802,7 @@ class HomeView(QWidget):
                 "youtube.com/" in raw or "youtu.be/" in raw
             )
             if is_candidate and raw != self._last_fetched_url:
-                self._debounce_timer.start(350)
+                self._debounce_timer.start(150)
             else:
                 self._debounce_timer.stop()
         else:
@@ -773,7 +830,16 @@ class HomeView(QWidget):
         else:
             self._on_paste_clicked()
 
+    def show_bot_helper(self):
+        if hasattr(self, 'bot_helper_card'):
+            self.bot_helper_card.show()
+
+    def hide_bot_helper(self):
+        if hasattr(self, 'bot_helper_card'):
+            self.bot_helper_card.hide()
+
     def _reset_url_state(self):
+        self.hide_bot_helper()
         self.card_skeleton.hide()
         self.hide_playlist_loading()
         self.card_metadata.hide()
@@ -781,6 +847,7 @@ class HomeView(QWidget):
         self.current_metadata = None
         self._last_fetched_url = ""
         self.lbl_status.setText("Ready to analyze media link.")
+        self.lbl_meta_title.setMinimumHeight(0)
         self.audio_options_widget.clear_metadata()
         if self.active_mode == "video":
             self._rebuild_quality_cards([
@@ -793,6 +860,7 @@ class HomeView(QWidget):
             ], "best")
 
     def _on_clear_url(self):
+        self.hide_bot_helper()
         self._debounce_timer.stop()
         self.input_url.clear()
         self.btn_download.setEnabled(False)
@@ -802,20 +870,38 @@ class HomeView(QWidget):
         clipboard = QGuiApplication.clipboard()
         text = clipboard.text().strip()
         if text:
-            self.input_url.setText(text)
+            cleaned = clean_media_url(text)
+            self.input_url.setText(cleaned)
             self._on_fetch_clicked()
 
     def _on_audio_folder_changed(self, folder: str):
-        self.active_folder = folder
-        self.lbl_folder_path.setText(folder)
-        self.folder_changed.emit(folder)
-
-    def set_active_folder(self, folder: str):
-        if folder and os.path.exists(folder):
+        self.audio_folder = folder
+        if self.active_mode == "audio":
             self.active_folder = folder
+            self.folder_changed.emit(folder)
+
+    def set_video_folder(self, folder: str):
+        if folder:
+            self.video_folder = folder
             self.lbl_folder_path.setText(folder)
+            if self.active_mode == "video":
+                self.active_folder = folder
+                self.folder_changed.emit(folder)
+
+    def set_audio_folder(self, folder: str):
+        if folder:
+            self.audio_folder = folder
             if hasattr(self, 'audio_options_widget'):
                 self.audio_options_widget.set_folder(folder)
+            if self.active_mode == "audio":
+                self.active_folder = folder
+                self.folder_changed.emit(folder)
+
+    def set_active_folder(self, folder: str):
+        if self.active_mode == "audio":
+            self.set_audio_folder(folder)
+        else:
+            self.set_video_folder(folder)
 
     def set_default_audio_format(self, fmt: str):
         if fmt in ["mp3", "m4a", "flac", "wav", "aac"]:
@@ -824,18 +910,29 @@ class HomeView(QWidget):
                 self.audio_options_widget._set_format(fmt)
 
     def _on_browse_clicked(self):
-        chosen = QFileDialog.getExistingDirectory(self, "Select Download Directory", self.active_folder)
+        chosen = QFileDialog.getExistingDirectory(self, "Select Video Download Directory", self.video_folder)
         if chosen:
-            self.active_folder = chosen
-            self.lbl_folder_path.setText(chosen)
-            save_last_folder(chosen)
-            self.folder_changed.emit(chosen)
+            try:
+                os.makedirs(chosen, exist_ok=True)
+            except Exception:
+                pass
+            self.set_video_folder(chosen)
+            save_video_folder(chosen)
 
     def _on_fetch_clicked(self):
+        self.hide_bot_helper()
         self._debounce_timer.stop()
-        url = self.input_url.text().strip()
-        if not url:
+        raw_url = self.input_url.text().strip()
+        if not raw_url:
             self.lbl_status.setText("⚠️ Please enter a valid URL.")
+            return
+
+        url = clean_media_url(raw_url)
+        if url != raw_url:
+            self.input_url.setText(url)
+
+        if url in self._metadata_cache:
+            self._on_metadata_loaded(self._metadata_cache[url])
             return
 
         self._current_thumbnail_pixmap = None
@@ -870,15 +967,24 @@ class HomeView(QWidget):
 
     @pyqtSlot(dict)
     def _on_metadata_loaded(self, data: dict):
+        self.hide_bot_helper()
+        url = data.get('url') or self.input_url.text().strip()
+        if url:
+            self._metadata_cache[url] = data
         self.current_metadata = data
         self._last_fetched_url = data.get('url', '')
         self.btn_url_action.setEnabled(True)
         self.btn_url_action.setText("  Fetch")
         self.btn_url_action.setIcon(get_icon("search", self.theme.accent_text, 14))
-        self.lbl_status.setText(f"✓ Metadata loaded: {data.get('title', 'Media')}")
+        title = data.get('title', 'Media')
+        status_title = (title[:67] + '...') if len(title) > 70 else title
+        if not self.btn_cancel.isEnabled():
+            self.lbl_status.setText(f"✓ Metadata loaded: {status_title}")
 
         # Populate card labels
         self.lbl_meta_title.setText(data.get('title', 'Unknown Title'))
+        self.lbl_meta_title.setMinimumHeight(0)
+        QTimer.singleShot(10, self._update_meta_title_height)
         self.lbl_meta_channel.setText(data.get('channel', 'Unknown Channel'))
 
         # Also populate audio tagger fields
@@ -952,12 +1058,31 @@ class HomeView(QWidget):
         if thumb_url:
             self.network_mgr.get(QNetworkRequest(QUrl(thumb_url)))
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_meta_title_height()
+
+    def _update_meta_title_height(self):
+        if hasattr(self, 'lbl_meta_title') and hasattr(self, 'card_metadata') and self.card_metadata.isVisible():
+            w = self.lbl_meta_title.width()
+            if w > 40:
+                h = self.lbl_meta_title.heightForWidth(w)
+                if h > 0 and self.lbl_meta_title.minimumHeight() != h:
+                    self.lbl_meta_title.setMinimumHeight(h)
+
     @pyqtSlot(str)
     def _on_metadata_failed(self, err_msg: str):
         self.btn_url_action.setEnabled(True)
         self.btn_url_action.setText("  Fetch")
         self.btn_url_action.setIcon(get_icon("search", self.theme.accent_text, 14))
-        self.lbl_status.setText(f"❌ Failed to fetch metadata: {err_msg}")
+
+        if is_bot_or_auth_error(err_msg):
+            self.lbl_status.setText("❌ YouTube blocked this request: Sign-in or bot check required.")
+            self.show_bot_helper()
+        else:
+            self.lbl_status.setText(f"❌ Failed to fetch metadata: {err_msg}")
+            self.hide_bot_helper()
+
         self.card_skeleton.hide()
         self.hide_playlist_loading()
         self.card_metadata.hide()
@@ -980,22 +1105,30 @@ class HomeView(QWidget):
         reply.deleteLater()
 
     def _on_download_clicked(self):
-        url = self.input_url.text().strip()
-        if not url:
+        raw_url = self.input_url.text().strip()
+        if not raw_url:
             self.lbl_status.setText("⚠️ Enter a valid URL first.")
             return
+
+        url = clean_media_url(raw_url)
 
         quality = self.audio_options_widget.active_bitrate if self.active_mode == "audio" else ("best" if self.active_quality == "best" else self.active_quality)
         audio_fmt = self.active_audio_format if self.active_mode == "audio" else "mp3"
         
         meta = self.current_metadata if (self.current_metadata and self.current_metadata.get('url') == url) else {}
         
-        audio_title = self.audio_options_widget.input_title.text().strip() if self.active_mode == "audio" else meta.get('title', 'Media Download')
+        audio_title = self.audio_options_widget.input_title.text().strip() if self.active_mode == "audio" else meta.get('title', '')
+        if not audio_title:
+            audio_title = meta.get('title', '') or 'Media Download'
+            
         audio_artist = self.audio_options_widget.input_artist.text().strip() if self.active_mode == "audio" else meta.get('channel', '')
+        if not audio_artist:
+            audio_artist = meta.get('channel', '')
 
+        target_folder = self.audio_folder if self.active_mode == "audio" else self.video_folder
         payload = {
             'url': url,
-            'folder': self.active_folder,
+            'folder': target_folder,
             'type': self.active_mode,
             'quality': quality,
             'audio_format': audio_fmt,
@@ -1008,7 +1141,13 @@ class HomeView(QWidget):
             'artist': audio_artist,
             'thumbnail': meta.get('thumbnail', ''),
             'channel': meta.get('channel', ''),
-            'duration_str': meta.get('duration_str', '')
+            'duration_str': meta.get('duration_str', ''),
+            'is_playlist': meta.get('is_playlist', False) if meta else None,
+            'crop_artwork': load_crop_artwork(),
+            'sponsorblock': load_sponsorblock_enabled(),
+            'compatibility_mode': load_compatibility_mode(),
+            'subtitle_languages': load_subtitle_languages(),
+            'auto_subtitles': load_auto_subtitles()
         }
         self.download_requested.emit(payload)
 
